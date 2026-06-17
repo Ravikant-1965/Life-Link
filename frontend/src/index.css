@@ -1,0 +1,109 @@
+/* index.css — Global styles applied to the whole app */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;  /* makes sizing more predictable */
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f4f8;
+  color: #2d3748;
+  line-height: 1.6;
+}
+
+/* Reusable button styles */
+.btn-primary {
+  background-color: #0077b6;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: #005f8e;
+}
+
+.btn-primary:disabled {
+  background-color: #90caf9;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #0077b6;
+  border: 2px solid #0077b6;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: #e8f4fd;
+}
+
+.btn-danger {
+  background-color: #e53e3e;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background-color: #c53030;
+}
+
+/* Reusable form input styles */
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: #0077b6;
+}
+
+/* Error message box */
+.error-message {
+  background-color: #fff5f5;
+  color: #c53030;
+  border: 1px solid #feb2b2;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* Success message box */
+.success-message {
+  background-color: #f0fff4;
+  color: #276749;
+  border: 1px solid #9ae6b4;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* Loading spinner text */
+.loading-text {
+  text-align: center;
+  padding: 40px;
+  color: #718096;
+  font-size: 16px;
+}
