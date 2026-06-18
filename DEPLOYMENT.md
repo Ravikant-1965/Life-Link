@@ -35,7 +35,7 @@ Use `/var/data` as the disk mount path. Without a persistent disk, the deployed 
 After deployment, confirm:
 
 ```text
-https://your-backend.onrender.com/api/health
+https://life-link-zjyg.onrender.com/api/health
 ```
 
 ## 2. Deploy the frontend on Vercel
@@ -50,7 +50,7 @@ Import the same repository and configure:
 Add this Vercel environment variable for Production, Preview, and Development as needed:
 
 ```text
-VITE_API_URL=https://your-backend.onrender.com
+VITE_API_URL=https://life-link-zjyg.onrender.com
 ```
 
 Deploy the frontend, then copy its final URL into the Render `CORS_ORIGINS` variable. Multiple allowed frontend URLs can be comma-separated.
