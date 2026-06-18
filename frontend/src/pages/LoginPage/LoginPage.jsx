@@ -8,9 +8,9 @@
 // which saves them to state AND localStorage
 // ============================================================
 
-import axios from 'axios'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import api from '../../api'
 import '../RegisterPage/RegisterPage.css'  // reuse the same form styles!
 
 export function LoginPage({ login }) {
@@ -32,7 +32,7 @@ export function LoginPage({ login }) {
     setError('');
 
     try {
-      const response = await axios.post('/api/login', { email, password });
+      const response = await api.post('/api/login', { email, password });
 
       // Call the login() function from App.jsx to save the token and user info
       login(response.data.user, response.data.token);

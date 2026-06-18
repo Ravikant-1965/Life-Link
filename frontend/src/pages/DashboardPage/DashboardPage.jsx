@@ -9,10 +9,10 @@
 // If not logged in, redirect to login page.
 // ============================================================
 
-import axios from 'axios'
 import { useState, useEffect } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'  // QR code library
+import api from '../../api'
 import './DashboardPage.css'
 
 export function DashboardPage({ user, token, logout }) {
@@ -32,7 +32,7 @@ export function DashboardPage({ user, token, logout }) {
     const fetchProfile = async () => {
       try {
         // We send the token in the Authorization header so backend knows who we are
-        const response = await axios.get('/api/profile', {
+        const response = await api.get('/api/profile', {
           headers: {
             Authorization: `Bearer ${token}`
           }

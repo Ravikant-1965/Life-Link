@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend for Life Link - Emergency Health Identity Platform",
   "main": "server.js",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --legacy-watch server.js"

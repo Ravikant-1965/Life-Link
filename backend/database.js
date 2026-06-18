@@ -1,7 +1,10 @@
 const { DatabaseSync } = require('node:sqlite');
+const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'lifelink.db');
+const DB_PATH = process.env.DATABASE_PATH
+    ? path.resolve(process.env.DATABASE_PATH)
+    : path.join(__dirname, 'lifelink.db');
 
 let db;
 
@@ -15,6 +18,7 @@ function ensureColumn(tableName, columnName, definition) {
 }
 
 function initDatabase() {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     db = new DatabaseSync(DB_PATH);
     console.log('Connected to SQLite database at:', DB_PATH);
 

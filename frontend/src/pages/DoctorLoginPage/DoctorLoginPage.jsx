@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import api from '../../api';
 import '../RegisterPage/RegisterPage.css';
 
 export function DoctorLoginPage({ loginDoctor }) {
@@ -23,7 +23,7 @@ export function DoctorLoginPage({ loginDoctor }) {
         setError('');
 
         try {
-            const response = await axios.post('/api/doctors/login', { email, password });
+            const response = await api.post('/api/doctors/login', { email, password });
             loginDoctor(response.data.doctor, response.data.token);
             navigate(healthId ? `/doctor/portal?healthId=${healthId}` : '/doctor/portal');
         } catch (requestError) {

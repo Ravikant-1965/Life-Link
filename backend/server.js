@@ -9,9 +9,29 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'lifelink-super-secret-key-change-this-in-production';
 const DOCTOR_VERIFICATION_CODE = process.env.DOCTOR_VERIFICATION_CODE || 'LIFELINK-DOCTOR-2026';
 const ADMIN_REVIEW_KEY = process.env.ADMIN_REVIEW_KEY || 'lifelink-admin-review-key';
+const allowedOrigins = new Set(
+    [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        process.env.FRONTEND_URL,
+        ...(process.env.CORS_ORIGINS || '').split(',')
+    ]
+        .filter(Boolean)
+        .map((origin) => origin.trim().replace(/\/+$/, ''))
+);
 
 app.disable('x-powered-by');
-app.use(cors());
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.has(origin.replace(/\/+$/, ''))) {
+            callback(null, true);
+            return;
+        }
+
+        callback(null, false);
+    },
+    credentials: true
+}));
 app.use(express.json({ limit: '12mb' }));
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -278,6 +298,13 @@ app.get('/', (_req, res) => {
             doctors: ['/api/doctors/register', '/api/doctors/login', '/api/doctors/me'],
             emergency: ['/api/doctor/patient/:healthId', '/api/emergency/:healthId']
         }
+    });
+});
+
+app.get('/api/health', (_req, res) => {
+    res.status(200).send({
+        status: 'ok',
+        service: 'life-link-backend'
     });
 });
 
@@ -645,7 +672,7 @@ app.get('/api/access-log', checkPatientAuth, (req, res) => {
 
 const server = app.listen(PORT, () => {
     console.log('\nLife Link backend is running!');
-    console.log(`Visit: http://localhost:${PORT}`);
+    console.log(`Listening on port ${PORT}`);
     console.log('\nAvailable API routes:');
     console.log('  POST   /api/register');
     console.log('  POST   /api/login');

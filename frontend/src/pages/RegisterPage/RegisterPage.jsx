@@ -4,9 +4,9 @@
 // On success, the backend gives us a Health ID.
 // ============================================================
 
-import axios from 'axios'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import api from '../../api'
 import './RegisterPage.css'
 
 export function RegisterPage() {
@@ -35,7 +35,7 @@ export function RegisterPage() {
     setError('');      // clear old errors
 
     try {
-      const response = await axios.post('/api/register', { name, email, password });
+      const response = await api.post('/api/register', { name, email, password });
 
       // Show success message with their new Health ID
       setSuccess(`Account created! Your Health ID is: ${response.data.healthId}. Redirecting to login...`);

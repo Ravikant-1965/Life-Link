@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import api from '../../api';
 import '../RegisterPage/RegisterPage.css';
 
 export function DoctorRegisterPage() {
@@ -39,7 +39,7 @@ export function DoctorRegisterPage() {
         setSuccess('');
 
         try {
-            const response = await axios.post('/api/doctors/register', formData);
+            const response = await api.post('/api/doctors/register', formData);
             setSuccess(response.data.message);
 
             setTimeout(() => {

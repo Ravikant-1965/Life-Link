@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import api from '../../api';
 import './EmergencyPage.css';
 
 function DoctorAccessGuard({ healthId }) {
@@ -105,7 +105,7 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
         setPatientData(null);
 
         try {
-            const response = await axios.get(`/api/doctor/patient/${searchId}`, {
+            const response = await api.get(`/api/doctor/patient/${searchId}`, {
                 headers: {
                     Authorization: `Bearer ${doctorToken}`
                 }

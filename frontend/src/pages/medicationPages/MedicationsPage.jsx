@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../../api';
 
 // --- THE HARDCODED DRUG INTERACTION LIST ---
 // This is a simple array of rules. If the patient is taking both Drug A and Drug B,
@@ -33,7 +33,7 @@ export function MedicationsPage({ healthId }) {
     const fetchPatient = async () => {
       try {
         // We use a hardcoded health ID here for testing, e.g., 'LL-A3X92'
-        const response = await axios.get(`/api/doctor/patient/${healthId}`);
+        const response = await api.get(`/api/doctor/patient/${healthId}`);
         const patientProfile = response.data.medicalData;
         
         setProfile(patientProfile);

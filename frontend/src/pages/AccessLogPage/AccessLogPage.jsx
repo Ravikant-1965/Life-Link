@@ -7,9 +7,9 @@
 // This page requires login (we check for user and token).
 // ============================================================
 
-import axios from 'axios'
 import { useState, useEffect } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import api from '../../api'
 import './AccessLogPage.css'
 
 export function AccessLogPage({ user, token, logout }) {
@@ -29,7 +29,7 @@ export function AccessLogPage({ user, token, logout }) {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const response = await axios.get('/api/access-log', {
+        const response = await api.get('/api/access-log', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setLogs(response.data);

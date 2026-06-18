@@ -1,6 +1,6 @@
-import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import api from '../../api';
 import './EditProfilePage.css';
 
 function readFilesAsDataUrls(fileList) {
@@ -69,7 +69,7 @@ export function EditProfilePage({ user, token, logout }) {
     useEffect(() => {
         const loadProfile = async () => {
             try {
-                const response = await axios.get('/api/profile', {
+                const response = await api.get('/api/profile', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
 
@@ -134,7 +134,7 @@ export function EditProfilePage({ user, token, logout }) {
         setSuccess('');
 
         try {
-            await axios.post(
+            await api.post(
                 '/api/profile',
                 {
                     fullName,
