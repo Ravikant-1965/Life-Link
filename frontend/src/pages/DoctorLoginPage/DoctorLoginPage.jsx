@@ -8,6 +8,7 @@ export function DoctorLoginPage({ loginDoctor }) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
@@ -58,13 +59,46 @@ export function DoctorLoginPage({ loginDoctor }) {
 
                     <div className="form-group">
                         <label>Password</label>
-                        <input
-                            type="password"
-                            className="form-input"
-                            placeholder="Enter your doctor password"
-                            value={password}
-                            onChange={(event) => setPassword(event.target.value)}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                className="form-input"
+                                style={{ paddingRight: '40px' }}
+                                placeholder="Enter your doctor password"
+                                value={password}
+                                onChange={(event) => setPassword(event.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); setShowPassword(true); }}
+                                onMouseUp={(e) => { e.preventDefault(); setShowPassword(false); }}
+                                onMouseLeave={(e) => { e.preventDefault(); setShowPassword(false); }}
+                                onTouchStart={(e) => { e.preventDefault(); setShowPassword(true); }}
+                                onTouchEnd={(e) => { e.preventDefault(); setShowPassword(false); }}
+                                onTouchCancel={(e) => { e.preventDefault(); setShowPassword(false); }}
+                                style={{
+                                    position: 'absolute',
+                                    right: '12px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#718096',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '4px',
+                                    userSelect: 'none',
+                                    WebkitUserSelect: 'none'
+                                }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <button className="btn-primary auth-submit-btn" onClick={handleLogin} disabled={loading}>

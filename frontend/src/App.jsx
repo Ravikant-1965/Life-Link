@@ -10,6 +10,8 @@ import { EmergencyPage } from './pages/EmergencyPage/EmergencyPage';
 import { AccessLogPage } from './pages/AccessLogPage/AccessLogPage';
 import { DoctorLoginPage } from './pages/DoctorLoginPage/DoctorLoginPage';
 import { DoctorRegisterPage } from './pages/DoctorRegisterPage/DoctorRegisterPage';
+import { ForgotPasswordPage } from './pages/LoginPage/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/LoginPage/ResetPasswordPage';
 
 import './App.css';
 
@@ -73,6 +75,8 @@ function App() {
 
             <Route path="register" element={<RegisterPage />} />
             <Route path="login" element={<LoginPage login={login} />} />
+            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
 
             <Route path="doctor/register" element={<DoctorRegisterPage />} />
             <Route path="doctor/login" element={<DoctorLoginPage loginDoctor={loginDoctor} />} />

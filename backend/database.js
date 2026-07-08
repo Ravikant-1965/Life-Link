@@ -93,6 +93,26 @@ function initDatabase() {
         )
     `);
 
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            email           TEXT    NOT NULL,
+            token           TEXT    NOT NULL UNIQUE,
+            expires_at      INTEGER NOT NULL,
+            used            INTEGER NOT NULL DEFAULT 0
+        )
+    `);
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS doctor_patient_sessions (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            doctor_id       INTEGER NOT NULL,
+            health_id       TEXT    NOT NULL,
+            started_at      INTEGER NOT NULL,
+            expires_at      INTEGER NOT NULL
+        )
+    `);
+
     ensureColumn('profiles', 'medical_files', 'TEXT');
     ensureColumn('profiles', 'document_images', "TEXT DEFAULT '[]'");
     ensureColumn('profiles', 'medication_images', "TEXT DEFAULT '[]'");

@@ -66,14 +66,106 @@ function renderLinkList(links) {
     );
 }
 
+function CircularTimer({ timeLeft }) {
+    const totalDuration = 1800; // 30 minutes in seconds
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+    // SVG parameters
+    const size = 32;
+    const strokeWidth = 3;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    
+    const progress = timeLeft / totalDuration;
+    const strokeDashoffset = circumference * (1 - progress);
+
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            padding: '4px 10px',
+            borderRadius: '16px',
+            color: '#ef4444',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            userSelect: 'none'
+        }}>
+            <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="transparent"
+                    stroke="rgba(239, 68, 68, 0.15)"
+                    strokeWidth={strokeWidth}
+                />
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    fill="transparent"
+                    stroke="#ef4444"
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 1s linear' }}
+                />
+            </svg>
+            <span>{formattedTime}</span>
+        </div>
+    );
+}
+
 export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
     const [healthId, setHealthId] = useState('');
     const [patientData, setPatientData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [timeLeft, setTimeLeft] = useState(0);
     const [searchParams] = useSearchParams();
 
     const idFromUrl = searchParams.get('healthId');
+
+    const handleSessionExpired = () => {
+        setPatientData(null);
+        setError('Your authorized viewing session has expired. Please re-enter the Patient ID to continue.');
+    };
+
+    useEffect(() => {
+        if (!patientData || !patientData.expiresAt) {
+            setTimeLeft(0);
+            return;
+        }
+
+        const calculateTimeLeft = () => {
+            const diff = Math.max(0, Math.floor((patientData.expiresAt - Date.now()) / 1000));
+            setTimeLeft(diff);
+            return diff;
+        };
+
+        const initial = calculateTimeLeft();
+        if (initial <= 0) {
+            handleSessionExpired();
+            return;
+        }
+
+        const interval = setInterval(() => {
+            const current = calculateTimeLeft();
+            if (current <= 0) {
+                clearInterval(interval);
+                handleSessionExpired();
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [patientData]);
 
     useEffect(() => {
         if (idFromUrl) {
@@ -83,11 +175,11 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
 
     useEffect(() => {
         if (doctorToken && idFromUrl) {
-            fetchPatientData(idFromUrl);
+            fetchPatientData(idFromUrl, false);
         }
     }, [doctorToken, idFromUrl]);
 
-    const fetchPatientData = async (id) => {
+    const fetchPatientData = async (id, isExplicitSearch = false) => {
         const searchId = (id || healthId).trim().toUpperCase();
 
         if (!searchId) {
@@ -105,11 +197,20 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
         setPatientData(null);
 
         try {
-            const response = await api.get(`/api/doctor/patient/${searchId}`, {
-                headers: {
-                    Authorization: `Bearer ${doctorToken}`
-                }
-            });
+            let response;
+            if (isExplicitSearch) {
+                response = await api.post(`/api/doctor/patient/${searchId}/access`, {}, {
+                    headers: {
+                        Authorization: `Bearer ${doctorToken}`
+                    }
+                });
+            } else {
+                response = await api.get(`/api/doctor/patient/${searchId}`, {
+                    headers: {
+                        Authorization: `Bearer ${doctorToken}`
+                    }
+                });
+            }
 
             setPatientData(response.data);
         } catch (requestError) {
@@ -132,14 +233,18 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
         return <DoctorAccessGuard healthId={healthId || idFromUrl} />;
     }
 
+
     return (
         <div className="emergency-page">
             <div className="emergency-header">
                 <div className="emergency-header-content">
                     <Link to="/" className="emergency-logo">+ Life Link Doctor Portal</Link>
-                    <div className="doctor-chip">
-                        <span>{doctor.name}</span>
-                        <span className="doctor-chip-meta">{doctor.specialization} · {doctor.hospital}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {patientData && <CircularTimer timeLeft={timeLeft} />}
+                        <div className="doctor-chip">
+                            <span>{doctor.name}</span>
+                            <span className="doctor-chip-meta">{doctor.specialization} · {doctor.hospital}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -163,10 +268,10 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                             placeholder="e.g. LL-A3X92"
                             value={healthId}
                             onChange={(event) => setHealthId(event.target.value.toUpperCase())}
-                            onKeyDown={(event) => event.key === 'Enter' && fetchPatientData()}
+                            onKeyDown={(event) => event.key === 'Enter' && fetchPatientData(undefined, true)}
                             maxLength={8}
                         />
-                        <button className="search-btn" onClick={() => fetchPatientData()} disabled={loading}>
+                        <button className="search-btn" onClick={() => fetchPatientData(undefined, true)} disabled={loading}>
                             {loading ? 'Loading profile...' : 'Open Secure Profile'}
                         </button>
                     </div>
