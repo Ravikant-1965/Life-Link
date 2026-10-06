@@ -1,7 +1,51 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
 export function LandingPage({ user, doctor, logout, logoutDoctor }) {
+    const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
+    const [openFaq, setOpenFaq] = useState(2);
+
+    const testimonials = [
+        {
+            rating: 4,
+            quote: "Setting up my health profile and adding emergency records was completely effortless. The platform made it simple to store critical medical data, and everything is clearly laid out from start to finish.",
+            author: "Nabila S.",
+            role: "Verified Patient",
+            image: "/testimonial_user.jpg"
+        },
+        {
+            rating: 5,
+            quote: "Life Link gives my patients and emergency team complete peace of mind. Verified doctors can view emergency contacts, allergies, and medication photos in real-time when every minute matters.",
+            author: "Dr. Sarah Chen",
+            role: "Internal Medicine",
+            image: "/doctor_consultation.jpg"
+        }
+    ];
+
+    const faqs = [
+        {
+            question: "1. Do you support insurance?",
+            answer: "Yes, we integrate with primary health plans and provide exportable diagnostic summaries for claims and hospital verification."
+        },
+        {
+            question: "2. How do verified doctors access my emergency profile?",
+            answer: "Doctors register separately with their professional license and hospital details. Only after credential verification can they search your Health ID or scan your QR code to unlock your profile."
+        },
+        {
+            question: "3. Are my medical records encrypted at rest?",
+            answer: "Yes! All sensitive health data, allergies, chronic conditions, and contact records are encrypted using AES-256 before being written to storage."
+        }
+    ];
+
+    const nextTestimonial = () => {
+        setCurrentReviewIndex((prev) => (prev + 1) % testimonials.length);
+    };
+
+    const prevTestimonial = () => {
+        setCurrentReviewIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+    };
+
     return (
         <div className="landing-page">
             <nav className="landing-nav">
@@ -14,8 +58,10 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                 </div>
 
                 <div className="nav-links">
-                    <a href="#security" className="nav-link">Security</a>
+                    <a href="#testimonials" className="nav-link">Reviews</a>
                     <a href="#how-it-works" className="nav-link">How it works</a>
+                    <a href="#security" className="nav-link">Security</a>
+                    <a href="#faqs" className="nav-link">FAQs</a>
 
                     {doctor ? (
                         <>
@@ -134,6 +180,107 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         <h3>Doctor verification before access</h3>
                         <p>Doctors register separately, provide professional credentials, and gain access only after verification is approved.</p>
                     </article>
+                </div>
+            </section>
+
+            <section className="care-access-section">
+                <div className="care-access-card">
+                    <div className="care-access-content">
+                        <div className="care-badge">
+                            <span className="star-icon">★</span> 50k+ Happy Patients
+                        </div>
+
+                        <h2 className="care-title">
+                            Simple access to <span className="care-highlight">care. anytime, anywhere</span>
+                        </h2>
+
+                        <p className="care-description">
+                            Search by specialty, location, or symptoms and choose the right doctor with confidence. See real-time availability.
+                        </p>
+
+                        <div className="care-actions">
+                            <Link to="/register" className="care-btn-gold">Book Appointment</Link>
+                            <Link to="/doctor/login" className="care-btn-teal">Find a Doctor</Link>
+                        </div>
+                    </div>
+
+                    <div className="care-access-image-wrapper">
+                        <img
+                            src="/doctor_consultation.jpg"
+                            alt="Doctor Patient Care"
+                            className="care-doctor-img"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            <section id="testimonials" className="testimonial-section">
+                <div className="testimonial-container">
+                    <div className="testimonial-header">
+                        <div>
+                            <span className="testimonial-kicker-pill">Testimonial</span>
+                            <h2 className="testimonial-title">Views of our trusted users</h2>
+                        </div>
+                        <div className="testimonial-nav-arrows">
+                            <button className="arrow-btn" onClick={prevTestimonial} aria-label="Previous review">←</button>
+                            <button className="arrow-btn" onClick={nextTestimonial} aria-label="Next review">→</button>
+                        </div>
+                    </div>
+
+                    <div className="testimonial-card-grid">
+                        <div className="testimonial-image-card">
+                            <img
+                                src={testimonials[currentReviewIndex].image}
+                                alt={testimonials[currentReviewIndex].author}
+                                className="testimonial-user-img"
+                            />
+                        </div>
+
+                        <div className="testimonial-quote-card">
+                            <div className="star-rating">
+                                {[...Array(5)].map((_, i) => (
+                                    <span key={i} className={i < testimonials[currentReviewIndex].rating ? "star-filled" : "star-empty"}>★</span>
+                                ))}
+                            </div>
+
+                            <p className="testimonial-quote">
+                                "{testimonials[currentReviewIndex].quote}"
+                            </p>
+
+                            <div className="testimonial-author-block">
+                                <strong className="author-name">{testimonials[currentReviewIndex].author}</strong>
+                                <span className="author-role">, {testimonials[currentReviewIndex].role}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="faqs" className="faq-section">
+                <div className="faq-container">
+                    <div className="faq-left">
+                        <span className="faq-kicker-pill">FAQs</span>
+                        <h2 className="faq-title">Need Help? We've Got Answers</h2>
+                        <p className="faq-subtitle">
+                            Here you'll find clear, concise responses to some of the most common questions about our emergency health services.
+                        </p>
+                    </div>
+
+                    <div className="faq-accordion-list">
+                        {faqs.map((faq, index) => (
+                            <div key={index} className={`faq-item ${openFaq === index ? 'faq-open' : ''}`}>
+                                <button className="faq-question" onClick={() => setOpenFaq(openFaq === index ? null : index)}>
+                                    <span>{faq.question}</span>
+                                    <span className="faq-toggle-icon">{openFaq === index ? '▲' : '▼'}</span>
+                                </button>
+                                {openFaq === index && (
+                                    <div className="faq-answer">
+                                        <p>{faq.answer}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </section>
 

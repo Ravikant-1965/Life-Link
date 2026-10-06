@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #eef5fc;
+  background-color: #e6f4f9;
   padding: 24px;
 }
 
@@ -16,7 +16,7 @@
   padding: 40px;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 10px 30px rgba(0, 86, 179, 0.08);
+  box-shadow: 0 10px 30px rgba(1, 138, 190, 0.08);
 }
 
 .auth-header {
@@ -28,7 +28,7 @@
   display: inline-block;
   font-size: 22px;
   font-weight: 800;
-  color: #0056b3;
+  color: #018ABE;
   text-decoration: none;
   margin-bottom: 14px;
 }
@@ -80,7 +80,7 @@
 }
 
 .auth-footer a {
-  color: #0056b3;
+  color: #018ABE;
   font-weight: 600;
   text-decoration: none;
 }

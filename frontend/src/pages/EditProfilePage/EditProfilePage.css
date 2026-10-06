@@ -19,7 +19,7 @@
 .nav-logo-text {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0056b3;
+  color: #018ABE;
   text-decoration: none;
 }
 
@@ -37,7 +37,7 @@
 }
 
 .nav-link:hover {
-  color: #0056b3;
+  color: #018ABE;
 }
 
 .edit-profile-content {
@@ -81,7 +81,7 @@
 .section-title {
   font-size: 1.1rem;
   font-weight: 800;
-  color: #0056b3;
+  color: #018ABE;
   margin-bottom: 18px;
   padding-bottom: 12px;
   border-bottom: 1px solid #e2e8f0;
@@ -133,8 +133,8 @@
 }
 
 .form-input:focus {
-  border-color: #0056b3;
-  box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.15);
+  border-color: #018ABE;
+  box-shadow: 0 0 0 3px rgba(1, 138, 190, 0.15);
 }
 
 .form-textarea {
@@ -147,8 +147,8 @@
 .file-input {
   padding: 12px;
   border-style: dashed;
-  background: #eef5fc;
-  border-color: #cce5ff;
+  background: #e6f4f9;
+  border-color: #b3e0f2;
 }
 
 .file-input::file-selector-button {
@@ -156,7 +156,7 @@
   border: none;
   border-radius: 6px;
   padding: 8px 16px;
-  background: #0056b3;
+  background: #018ABE;
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
@@ -225,7 +225,7 @@
   font-size: 0.96rem;
   font-weight: 700;
   border-radius: 8px;
-  background-color: #0056b3;
+  background-color: #018ABE;
 }
 
 .cancel-btn {
@@ -238,13 +238,13 @@
   text-decoration: none;
   border-radius: 8px;
   background-color: #ffffff;
-  color: #0056b3;
-  border: 1.5px solid #0056b3;
+  color: #018ABE;
+  border: 1.5px solid #018ABE;
   font-weight: 700;
 }
 
 .cancel-btn:hover {
-  background-color: #eef5fc;
+  background-color: #e6f4f9;
 }
 
 @media (max-width: 760px) {

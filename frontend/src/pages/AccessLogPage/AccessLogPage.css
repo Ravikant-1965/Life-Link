@@ -19,7 +19,7 @@
 .nav-logo-text {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0056b3;
+  color: #018ABE;
   text-decoration: none;
 }
 
@@ -37,7 +37,7 @@
 }
 
 .nav-link:hover {
-  color: #0056b3;
+  color: #018ABE;
 }
 
 .nav-logout-btn {
@@ -87,7 +87,7 @@
 .stat-number {
   font-size: clamp(1.9rem, 3vw, 2.4rem);
   font-weight: 800;
-  color: #0056b3;
+  color: #018ABE;
   margin-bottom: 4px;
 }
 
@@ -118,7 +118,7 @@
 }
 
 .logs-list-header {
-  background: #0056b3;
+  background: #018ABE;
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 700;
@@ -164,7 +164,7 @@
 
 .log-health-id {
   font-size: 0.82rem;
-  color: #0056b3;
+  color: #018ABE;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -212,12 +212,12 @@
 }
 
 .privacy-note {
-  background: #eef5fc;
-  border: 1px solid #cce5ff;
+  background: #e6f4f9;
+  border: 1px solid #b3e0f2;
   border-radius: 12px;
   padding: 16px 18px;
   font-size: 0.9rem;
-  color: #004085;
+  color: #015575;
   line-height: 1.7;
 }
 
@@ -234,8 +234,8 @@
     width: fit-content;
     padding: 6px 10px;
     border-radius: 999px;
-    background: #eef5fc;
-    color: #0056b3;
+    background: #e6f4f9;
+    color: #018ABE;
   }
 }
 
