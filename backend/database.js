@@ -120,6 +120,8 @@ function initDatabase() {
     ensureColumn('doctors', 'specialization', "TEXT NOT NULL DEFAULT ''");
     ensureColumn('doctors', 'verification_status', "TEXT NOT NULL DEFAULT 'pending'");
     ensureColumn('doctors', 'verified_at', 'TEXT');
+    ensureColumn('doctors', 'mfa_secret', 'TEXT');
+    ensureColumn('doctors', 'mfa_enabled', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumn('access_logs', 'doctor_id', 'INTEGER');
     ensureColumn('access_logs', 'doctor_name', 'TEXT');
     ensureColumn('access_logs', 'doctor_email', 'TEXT');

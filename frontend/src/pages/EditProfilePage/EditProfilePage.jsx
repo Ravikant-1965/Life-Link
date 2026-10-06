@@ -104,19 +104,43 @@ export function EditProfilePage({ user, token, logout }) {
         loadProfile();
     }, [logout, navigate, token]);
 
-    const handleDocumentUpload = async (event, type) => {
+    const [uploadingImages, setUploadingImages] = useState(false);
+
+    const uploadSingleFile = async (dataUrl) => {
         try {
-            const files = await readFilesAsDataUrls(event.target.files);
+            const response = await api.post('/api/upload-image', {
+                image: dataUrl,
+                folder: 'lifelink_medical_docs'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            return response.data.url;
+        } catch (_err) {
+            return dataUrl;
+        }
+    };
+
+    const handleDocumentUpload = async (event, type) => {
+        if (!event.target.files?.length) return;
+
+        setUploadingImages(true);
+        setError('');
+
+        try {
+            const dataUrls = await readFilesAsDataUrls(event.target.files);
+            const uploadedUrls = await Promise.all(dataUrls.map((url) => uploadSingleFile(url)));
 
             if (type === 'documents') {
-                setDocumentImages((current) => [...current, ...files]);
+                setDocumentImages((current) => [...current, ...uploadedUrls]);
             } else {
-                setMedicationImages((current) => [...current, ...files]);
+                setMedicationImages((current) => [...current, ...uploadedUrls]);
             }
 
             event.target.value = '';
         } catch (_error) {
-            setError('One of the selected images could not be read. Please try again.');
+            setError('One of the selected images could not be uploaded. Please try again.');
+        } finally {
+            setUploadingImages(false);
         }
     };
 

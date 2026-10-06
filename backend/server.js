@@ -5,7 +5,29 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const cloudinary = require('cloudinary').v2;
+const { generateSecret, generateURI, verifySync } = require('otplib');
+const QRCode = require('qrcode');
 const { initDatabase, getDb } = require('./database');
+const { encryptText, decryptText } = require('./cryptoUtils');
+
+if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+}
+
+function verifyTotpCode(token, secret) {
+    if (!token || !secret) return false;
+    try {
+        const result = verifySync({ token: String(token).trim(), secret });
+        return Boolean(result && result.valid);
+    } catch (_err) {
+        return false;
+    }
+}
 
 let mailTransporter;
 if (process.env.SMTP_HOST) {
@@ -114,7 +136,7 @@ function serializeArray(value) {
     return JSON.stringify(Array.isArray(value) ? value : []);
 }
 
-function sanitizeImageDataArray(value, maxItems = 6) {
+function sanitizeImageDataArray(value, maxItems = 12) {
     if (!Array.isArray(value)) {
         return [];
     }
@@ -123,7 +145,7 @@ function sanitizeImageDataArray(value, maxItems = 6) {
         .filter(
             (item) =>
                 typeof item === 'string'
-                && item.startsWith('data:image/')
+                && (item.startsWith('data:image/') || /^https?:\/\//i.test(item))
                 && item.length <= 6_000_000
         )
         .slice(0, maxItems);
@@ -173,6 +195,25 @@ function formatProfile(profile) {
 
     return {
         ...profile,
+        full_name: decryptText(profile.full_name),
+        date_of_birth: decryptText(profile.date_of_birth),
+        blood_group: decryptText(profile.blood_group),
+        allergies: decryptText(profile.allergies),
+        chronic_conditions: decryptText(profile.chronic_conditions),
+        current_medications: decryptText(profile.current_medications),
+        previous_surgeries: decryptText(profile.previous_surgeries),
+        previous_prescriptions: decryptText(profile.previous_prescriptions),
+        emergency_contact_name: decryptText(profile.emergency_contact_name),
+        emergency_contact_phone: decryptText(profile.emergency_contact_phone),
+        organ_donor_status: decryptText(profile.organ_donor_status),
+        chief_complaint: decryptText(profile.chief_complaint),
+        previous_treatments: decryptText(profile.previous_treatments),
+        lab_results: decryptText(profile.lab_results),
+        kidney_liver_function: decryptText(profile.kidney_liver_function),
+        pregnancy_status: decryptText(profile.pregnancy_status),
+        family_history: decryptText(profile.family_history),
+        substance_use: decryptText(profile.substance_use),
+        mental_health_status: decryptText(profile.mental_health_status),
         document_images: parseArray(profile.document_images),
         medication_images: parseArray(profile.medication_images),
         medical_file_links: parseLinks(profile.medical_files)
@@ -228,7 +269,7 @@ function checkDoctorAuth(req, res, next) {
 
         const db = getDb();
         const doctor = db.prepare(`
-            SELECT id, name, email, license_number, hospital, specialization, verification_status
+            SELECT id, name, email, license_number, hospital, specialization, verification_status, mfa_enabled
             FROM doctors
             WHERE id = ?
         `).get(decoded.id);
@@ -554,6 +595,34 @@ app.post('/api/doctors/register', (req, res) => {
     });
 });
 
+app.post('/api/upload-image', (req, res) => {
+    const { image, folder } = req.body;
+
+    if (!image || typeof image !== 'string') {
+        return res.status(400).send({ message: 'No image data string provided.' });
+    }
+
+    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        cloudinary.uploader.upload(image, {
+            folder: folder || 'lifelink_medical_docs',
+            resource_type: 'auto'
+        }, (error, result) => {
+            if (error) {
+                console.error('Cloudinary Upload Error:', error);
+                return res.status(500).send({ message: `Cloudinary upload failed: ${error.message}` });
+            }
+
+            res.send({ url: result.secure_url, provider: 'cloudinary' });
+        });
+    } else {
+        res.send({
+            url: image,
+            provider: 'local_base64',
+            note: 'Cloudinary environment keys not set. Returned image data string directly.'
+        });
+    }
+});
+
 app.post('/api/doctors/login', (req, res) => {
     const { email, password } = req.body;
 
@@ -575,6 +644,15 @@ app.post('/api/doctors/login', (req, res) => {
         });
     }
 
+    if (doctor.mfa_enabled === 1) {
+        const tempToken = jwt.sign({ role: 'doctor_mfa_pending', id: doctor.id }, JWT_SECRET, { expiresIn: '5m' });
+        return res.send({
+            mfaRequired: true,
+            tempToken,
+            message: 'Multi-Factor Authentication (MFA) code required.'
+        });
+    }
+
     const token = createToken({ role: 'doctor', id: doctor.id });
 
     res.send({
@@ -587,9 +665,129 @@ app.post('/api/doctors/login', (req, res) => {
             licenseNumber: doctor.license_number,
             hospital: doctor.hospital,
             specialization: doctor.specialization,
-            verificationStatus: doctor.verification_status
+            verificationStatus: doctor.verification_status,
+            mfaEnabled: false
         }
     });
+});
+
+app.post('/api/doctors/mfa/verify-login', (req, res) => {
+    const { tempToken, code } = req.body;
+
+    if (!tempToken || !code) {
+        return res.status(400).send({ message: 'Temporary token and 6-digit verification code are required.' });
+    }
+
+    try {
+        const decoded = jwt.verify(tempToken, JWT_SECRET);
+        if (decoded.role !== 'doctor_mfa_pending') {
+            return res.status(403).send({ message: 'Invalid MFA verification sequence.' });
+        }
+
+        const db = getDb();
+        const doctor = db.prepare('SELECT * FROM doctors WHERE id = ?').get(decoded.id);
+
+        if (!doctor || doctor.mfa_enabled !== 1 || !doctor.mfa_secret) {
+            return res.status(400).send({ message: 'MFA is not enabled on this doctor account.' });
+        }
+
+        const isValid = verifyTotpCode(code, doctor.mfa_secret);
+        if (!isValid) {
+            return res.status(401).send({ message: 'Invalid verification code. Check your authenticator app.' });
+        }
+
+        const token = createToken({ role: 'doctor', id: doctor.id });
+
+        res.send({
+            message: 'MFA verification successful! Login complete.',
+            token,
+            doctor: {
+                id: doctor.id,
+                name: doctor.name,
+                email: doctor.email,
+                licenseNumber: doctor.license_number,
+                hospital: doctor.hospital,
+                specialization: doctor.specialization,
+                verificationStatus: doctor.verification_status,
+                mfaEnabled: true
+            }
+        });
+    } catch (_error) {
+        return res.status(401).send({ message: 'MFA login session expired or invalid. Please login again.' });
+    }
+});
+
+app.post('/api/doctors/mfa/setup', checkDoctorAuth, async (req, res) => {
+    try {
+        const db = getDb();
+        const doctorId = req.doctor.id;
+        const doctor = db.prepare('SELECT email, mfa_secret, mfa_enabled FROM doctors WHERE id = ?').get(doctorId);
+
+        let secret = doctor.mfa_secret;
+        if (!secret) {
+            secret = generateSecret();
+            db.prepare('UPDATE doctors SET mfa_secret = ? WHERE id = ?').run(secret, doctorId);
+        }
+
+        const otpauthUrl = generateURI({
+            label: doctor.email,
+            issuer: 'Life Link Doctor Portal',
+            secret
+        });
+        const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+        res.send({
+            secret,
+            qrCode,
+            mfaEnabled: doctor.mfa_enabled === 1
+        });
+    } catch (error) {
+        res.status(500).send({ message: `Failed to initialize MFA setup: ${error.message}` });
+    }
+});
+
+app.post('/api/doctors/mfa/verify-setup', checkDoctorAuth, (req, res) => {
+    const { code } = req.body;
+
+    if (!code) {
+        return res.status(400).send({ message: '6-digit verification code is required.' });
+    }
+
+    const db = getDb();
+    const doctor = db.prepare('SELECT id, mfa_secret FROM doctors WHERE id = ?').get(req.doctor.id);
+
+    if (!doctor || !doctor.mfa_secret) {
+        return res.status(400).send({ message: 'MFA setup not initialized. Call setup endpoint first.' });
+    }
+
+    const isValid = verifyTotpCode(code, doctor.mfa_secret);
+    if (!isValid) {
+        return res.status(400).send({ message: 'Invalid 6-digit code. Check your authenticator app.' });
+    }
+
+    db.prepare('UPDATE doctors SET mfa_enabled = 1 WHERE id = ?').run(doctor.id);
+
+    res.send({ message: 'Multi-Factor Authentication (MFA) enabled successfully!' });
+});
+
+app.post('/api/doctors/mfa/disable', checkDoctorAuth, (req, res) => {
+    const { code } = req.body;
+    const db = getDb();
+    const doctor = db.prepare('SELECT id, mfa_secret, mfa_enabled FROM doctors WHERE id = ?').get(req.doctor.id);
+
+    if (!doctor || doctor.mfa_enabled !== 1) {
+        return res.status(400).send({ message: 'MFA is not currently enabled.' });
+    }
+
+    if (code) {
+        const isValid = verifyTotpCode(code, doctor.mfa_secret);
+        if (!isValid) {
+            return res.status(400).send({ message: 'Invalid verification code.' });
+        }
+    }
+
+    db.prepare('UPDATE doctors SET mfa_enabled = 0, mfa_secret = NULL WHERE id = ?').run(doctor.id);
+    res.send({ message: 'MFA has been disabled for your account.' });
 });
 
 app.get('/api/doctors/me', checkDoctorAuth, (req, res) => {
@@ -601,7 +799,8 @@ app.get('/api/doctors/me', checkDoctorAuth, (req, res) => {
             licenseNumber: req.doctor.license_number,
             hospital: req.doctor.hospital,
             specialization: req.doctor.specialization,
-            verificationStatus: req.doctor.verification_status
+            verificationStatus: req.doctor.verification_status,
+            mfaEnabled: Boolean(req.doctor.mfa_enabled)
         }
     });
 });
@@ -692,6 +891,18 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
         const safeEmergencyContactPhone = sanitizeOptionalText(emergencyContactPhone, 32);
         const safeOrganDonorStatus = sanitizeOptionalText(organDonorStatus, 40) || 'Not specified';
 
+        const encFullName = encryptText(safeFullName);
+        const encDateOfBirth = encryptText(safeDateOfBirth);
+        const encBloodGroup = encryptText(safeBloodGroup);
+        const encAllergies = encryptText(safeAllergies);
+        const encChronicConditions = encryptText(safeChronicConditions);
+        const encCurrentMedications = encryptText(safeCurrentMedications);
+        const encPreviousSurgeries = encryptText(safePreviousSurgeries);
+        const encPreviousPrescriptions = encryptText(safePreviousPrescriptions);
+        const encEmergencyContactName = encryptText(safeEmergencyContactName);
+        const encEmergencyContactPhone = encryptText(safeEmergencyContactPhone);
+        const encOrganDonorStatus = encryptText(safeOrganDonorStatus);
+
         if (existingProfile) {
             db.prepare(`
                 UPDATE profiles SET
@@ -711,17 +922,17 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
                     medication_images       = ?
                 WHERE user_id = ?
             `).run(
-                safeFullName,
-                safeDateOfBirth,
-                safeBloodGroup,
-                safeAllergies,
-                safeChronicConditions,
-                safeCurrentMedications,
-                safePreviousSurgeries,
-                safePreviousPrescriptions,
-                safeEmergencyContactName,
-                safeEmergencyContactPhone,
-                safeOrganDonorStatus,
+                encFullName,
+                encDateOfBirth,
+                encBloodGroup,
+                encAllergies,
+                encChronicConditions,
+                encCurrentMedications,
+                encPreviousSurgeries,
+                encPreviousPrescriptions,
+                encEmergencyContactName,
+                encEmergencyContactPhone,
+                encOrganDonorStatus,
                 safeDocumentLinks,
                 safeDocumentImages,
                 safeMedicationImages,
@@ -737,17 +948,17 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 req.userId,
-                safeFullName,
-                safeDateOfBirth,
-                safeBloodGroup,
-                safeAllergies,
-                safeChronicConditions,
-                safeCurrentMedications,
-                safePreviousSurgeries,
-                safePreviousPrescriptions,
-                safeEmergencyContactName,
-                safeEmergencyContactPhone,
-                safeOrganDonorStatus,
+                encFullName,
+                encDateOfBirth,
+                encBloodGroup,
+                encAllergies,
+                encChronicConditions,
+                encCurrentMedications,
+                encPreviousSurgeries,
+                encPreviousPrescriptions,
+                encEmergencyContactName,
+                encEmergencyContactPhone,
+                encOrganDonorStatus,
                 safeDocumentLinks,
                 safeDocumentImages,
                 safeMedicationImages

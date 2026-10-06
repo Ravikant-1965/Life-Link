@@ -123,12 +123,183 @@ function CircularTimer({ timeLeft }) {
     );
 }
 
+function DoctorMfaModal({ doctorToken, doctor, onClose, onMfaStatusChange }) {
+    const [mfaEnabled, setMfaEnabled] = useState(doctor.mfaEnabled || false);
+    const [qrCode, setQrCode] = useState('');
+    const [secret, setSecret] = useState('');
+    const [code, setCode] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [step, setStep] = useState('status');
+
+    const initSetup = async () => {
+        setLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            const res = await api.post('/api/doctors/mfa/setup', {}, {
+                headers: { Authorization: `Bearer ${doctorToken}` }
+            });
+            setQrCode(res.data.qrCode);
+            setSecret(res.data.secret);
+            setMfaEnabled(res.data.mfaEnabled);
+            setStep('setup');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to initialize MFA setup.');
+        }
+        setLoading(false);
+    };
+
+    const verifySetup = async () => {
+        if (!code || code.trim().length !== 6) {
+            setError('Please enter a valid 6-digit code.');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        try {
+            await api.post('/api/doctors/mfa/verify-setup', { code: code.trim() }, {
+                headers: { Authorization: `Bearer ${doctorToken}` }
+            });
+            setMfaEnabled(true);
+            setSuccess('MFA has been successfully activated for your doctor account!');
+            setStep('status');
+            if (onMfaStatusChange) onMfaStatusChange(true);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Verification failed. Please check the code.');
+        }
+        setLoading(false);
+    };
+
+    const disableMfa = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            await api.post('/api/doctors/mfa/disable', {}, {
+                headers: { Authorization: `Bearer ${doctorToken}` }
+            });
+            setMfaEnabled(false);
+            setSuccess('MFA has been disabled.');
+            setStep('status');
+            if (onMfaStatusChange) onMfaStatusChange(false);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to disable MFA.');
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div className="mfa-modal-overlay" style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+        }}>
+            <div className="mfa-modal-card" style={{
+                background: '#1a202c',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '16px',
+                padding: '28px',
+                maxWidth: '460px',
+                width: '100%',
+                color: '#fff',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        🛡️ Doctor MFA Security
+                    </h2>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#a0aec0', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+                </div>
+
+                {error && <div className="error-message" style={{ marginBottom: '16px' }}>{error}</div>}
+                {success && <div style={{ background: 'rgba(72,187,120,0.15)', border: '1px solid #48bb78', color: '#48bb78', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px' }}>{success}</div>}
+
+                {step === 'status' && (
+                    <div>
+                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px', marginBottom: '20px' }}>
+                            <div style={{ fontSize: '13px', color: '#a0aec0', marginBottom: '4px' }}>MFA Status</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '16px' }}>
+                                {mfaEnabled ? (
+                                    <span style={{ color: '#48bb78', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        ● Enabled (Authenticator Active)
+                                    </span>
+                                ) : (
+                                    <span style={{ color: '#e53e3e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        ○ Not Enabled
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {!mfaEnabled ? (
+                            <button className="btn-primary" onClick={initSetup} disabled={loading} style={{ width: '100%', padding: '12px' }}>
+                                {loading ? 'Generating QR Code...' : 'Set Up Authenticator App (TOTP)'}
+                            </button>
+                        ) : (
+                            <button className="btn-secondary" onClick={disableMfa} disabled={loading} style={{ width: '100%', padding: '12px', background: 'rgba(229,62,62,0.15)', color: '#fc8181', borderColor: 'rgba(229,62,62,0.3)' }}>
+                                {loading ? 'Disabling...' : 'Disable MFA Security'}
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {step === 'setup' && (
+                    <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: '14px', color: '#cbd5e0', marginBottom: '16px' }}>
+                            Scan this QR Code using <strong>Google Authenticator</strong> or <strong>Authy</strong>:
+                        </p>
+
+                        {qrCode && (
+                            <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', display: 'inline-block', marginBottom: '16px' }}>
+                                <img src={qrCode} alt="TOTP MFA QR Code" style={{ width: '180px', height: '180px', display: 'block' }} />
+                            </div>
+                        )}
+
+                        <div style={{ fontSize: '12px', color: '#a0aec0', fontFamily: 'monospace', marginBottom: '20px', wordBreak: 'break-all' }}>
+                            Secret Key: {secret}
+                        </div>
+
+                        <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+                            <label style={{ display: 'block', fontSize: '13px', color: '#cbd5e0', marginBottom: '6px' }}>Enter 6-Digit Code to Confirm Setup</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                style={{ textAlign: 'center', fontSize: '18px', letterSpacing: '6px', fontWeight: 'bold', fontFamily: 'monospace' }}
+                                maxLength={6}
+                                placeholder="123456"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button className="btn-secondary" onClick={() => setStep('status')} style={{ flex: 1 }}>Cancel</button>
+                            <button className="btn-primary" onClick={verifySetup} disabled={loading} style={{ flex: 2 }}>
+                                {loading ? 'Verifying...' : 'Activate MFA'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
     const [healthId, setHealthId] = useState('');
     const [patientData, setPatientData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [timeLeft, setTimeLeft] = useState(0);
+    const [showMfaModal, setShowMfaModal] = useState(false);
+    const [doctorInfo, setDoctorInfo] = useState(doctor);
     const [searchParams] = useSearchParams();
 
     const idFromUrl = searchParams.get('healthId');
@@ -241,13 +412,44 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                     <Link to="/" className="emergency-logo">+ Life Link Doctor Portal</Link>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         {patientData && <CircularTimer timeLeft={timeLeft} />}
+                        <button
+                            type="button"
+                            onClick={() => setShowMfaModal(true)}
+                            style={{
+                                background: doctorInfo?.mfaEnabled ? 'rgba(72,187,120,0.15)' : 'rgba(255,255,255,0.08)',
+                                border: doctorInfo?.mfaEnabled ? '1px solid #48bb78' : '1px solid rgba(255,255,255,0.2)',
+                                color: doctorInfo?.mfaEnabled ? '#48bb78' : '#e2e8f0',
+                                padding: '6px 14px',
+                                borderRadius: '20px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            🛡️ {doctorInfo?.mfaEnabled ? 'MFA Enabled' : 'MFA Setup'}
+                        </button>
                         <div className="doctor-chip">
-                            <span>{doctor.name}</span>
-                            <span className="doctor-chip-meta">{doctor.specialization} · {doctor.hospital}</span>
+                            <span>{doctorInfo?.name || doctor.name}</span>
+                            <span className="doctor-chip-meta">{(doctorInfo || doctor).specialization} · {(doctorInfo || doctor).hospital}</span>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {showMfaModal && (
+                <DoctorMfaModal
+                    doctorToken={doctorToken}
+                    doctor={doctorInfo || doctor}
+                    onClose={() => setShowMfaModal(false)}
+                    onMfaStatusChange={(newStatus) => {
+                        setDoctorInfo((prev) => ({ ...prev, mfaEnabled: newStatus }));
+                    }}
+                />
+            )}
 
             <div className="emergency-content">
                 <div className="emergency-search-card">
