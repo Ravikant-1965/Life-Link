@@ -6,7 +6,7 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
         <div className="landing-page">
             <nav className="landing-nav">
                 <div className="nav-logo">
-                    <span className="logo-icon">+</span>
+                    <img src="/logo_cross.png" alt="Life Link Cross Logo" className="logo-cross-img" />
                     <div>
                         <div className="logo-text">Life Link</div>
                         <div className="logo-subtext">Emergency health identity platform</div>
@@ -30,7 +30,7 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                     ) : (
                         <>
                             <Link to="/doctor/login" className="nav-btn btn-secondary">Doctor Login</Link>
-                            <Link to="/register" className="nav-btn btn-primary">Create Patient Profile</Link>
+                            <Link to="/register" className="nav-btn btn-primary">Create Profile</Link>
                         </>
                     )}
                 </div>
@@ -53,7 +53,7 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                             <Link to="/dashboard" className="hero-btn-primary">Open Patient Dashboard</Link>
                         ) : (
                             <>
-                                <Link to="/register" className="hero-btn-primary">Create Patient Profile</Link>
+                                <Link to="/register" className="hero-btn-primary">Create Profile</Link>
                                 <Link to="/login" className="hero-btn-secondary">Patient Login</Link>
                             </>
                         )}
@@ -73,35 +73,38 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                 </div>
 
                 <div className="hero-panel">
-                    <div className="profile-preview-card">
-                        <div className="preview-header">
-                            <span>Emergency Snapshot</span>
-                            <span className="preview-status">Verified Doctor View</span>
-                        </div>
+                    <div className="profile-preview-wrapper">
+                        <img src="/logo_cross.png" alt="Life Link Logo" className="hero-cross-floating" />
+                        <div className="profile-preview-card">
+                            <div className="preview-header">
+                                <span>Emergency Snapshot</span>
+                                <span className="preview-status">Verified Doctor View</span>
+                            </div>
 
-                        <div className="preview-row">
-                            <span>Health ID</span>
-                            <strong>LL-K7P2Q</strong>
-                        </div>
-                        <div className="preview-row">
-                            <span>Blood Group</span>
-                            <strong className="preview-blood">O+</strong>
-                        </div>
-                        <div className="preview-row">
-                            <span>Critical Allergies</span>
-                            <strong>Penicillin, Peanuts</strong>
-                        </div>
-                        <div className="preview-row">
-                            <span>Medication Photos</span>
-                            <strong>3 attached</strong>
-                        </div>
-                        <div className="preview-row">
-                            <span>Medical Records</span>
-                            <strong>Scans + Drive links</strong>
-                        </div>
+                            <div className="preview-row">
+                                <span>Health ID</span>
+                                <strong>LL-K7P2Q</strong>
+                            </div>
+                            <div className="preview-row">
+                                <span>Blood Group</span>
+                                <strong className="preview-blood">O+</strong>
+                            </div>
+                            <div className="preview-row">
+                                <span>Critical Allergies</span>
+                                <strong>Penicillin, Peanuts</strong>
+                            </div>
+                            <div className="preview-row">
+                                <span>Medication Photos</span>
+                                <strong>3 attached</strong>
+                            </div>
+                            <div className="preview-row">
+                                <span>Medical Records</span>
+                                <strong>Scans + Drive links</strong>
+                            </div>
 
-                        <div className="preview-audit">
-                            Every emergency view is linked to a doctor identity and written to the patient access log.
+                            <div className="preview-audit">
+                                Every emergency view is linked to a doctor identity and written to the patient access log.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -158,6 +161,7 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
 
             <section className="doctor-message">
                 <div className="doctor-message-card">
+                    <img src="/logo_cross.png" alt="Life Link Cross Banner" className="banner-cross-img" />
                     <h2>Doctor and emergency responder access</h2>
                     <p>
                         Access a patient’s emergency profile securely using their Health ID or QR code. Doctor account login and verification are required.

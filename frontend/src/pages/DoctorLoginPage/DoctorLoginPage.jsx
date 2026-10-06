@@ -131,6 +131,7 @@ export function DoctorLoginPage({ loginDoctor }) {
         <div className="auth-page">
             <div className="auth-card">
                 <div className="auth-header">
+                    <img src="/logo_cross.png" alt="Life Link Cross Logo" style={{ width: '140px', height: '140px', objectFit: 'contain', margin: '0 auto 16px', display: 'block' }} />
                     <Link to="/" className="auth-logo">Life Link</Link>
                     <h1>Verified doctor login</h1>
                 </div>

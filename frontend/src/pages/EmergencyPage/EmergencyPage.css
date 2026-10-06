@@ -1,8 +1,8 @@
+/* EmergencyPage.css — Hospital Blue & White Theme */
+
 .emergency-page {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 24%),
-    linear-gradient(180deg, #f6fbff 0%, #eef5fb 100%);
+  background-color: #f8fafc;
 }
 
 .portal-lock-shell {
@@ -10,46 +10,51 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(135deg, #082f49 0%, #0f172a 55%, #0f766e 100%);
+  background-color: #eef5fc;
 }
 
 .portal-lock-card {
   width: min(100%, 760px);
-  padding: 34px;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.28);
+  padding: 36px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 12px 36px rgba(0, 86, 179, 0.08);
 }
 
 .portal-lock-badge {
   display: inline-flex;
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-radius: 999px;
   margin-bottom: 18px;
-  background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
+  background: #eef5fc;
+  border: 1px solid #cce5ff;
+  color: #0056b3;
   font-size: 0.88rem;
   font-weight: 700;
 }
 
 .portal-lock-card h1 {
-  font-size: clamp(2rem, 3vw, 3rem);
-  line-height: 1.1;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1.2;
+  color: #0f172a;
+  font-weight: 800;
   margin-bottom: 14px;
 }
 
 .portal-lock-card p {
   color: #475569;
-  line-height: 1.8;
-  margin-bottom: 18px;
+  line-height: 1.7;
+  margin-bottom: 20px;
 }
 
 .portal-health-preview {
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #f8fafc;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
   margin-bottom: 20px;
+  color: #1e293b;
 }
 
 .portal-lock-actions {
@@ -58,14 +63,15 @@
   flex-wrap: wrap;
 }
 
+/* HEADER */
 .emergency-header {
   position: sticky;
   top: 0;
   z-index: 20;
   padding: 16px 28px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .emergency-header-content {
@@ -79,26 +85,28 @@
 
 .emergency-logo {
   text-decoration: none;
-  color: #0f172a;
+  color: #0056b3;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
 }
 
 .doctor-chip {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 4px;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: rgba(14, 165, 233, 0.08);
-  color: #0f172a;
+  gap: 2px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: #eef5fc;
+  border: 1px solid #cce5ff;
+  color: #0056b3;
   font-weight: 700;
 }
 
 .doctor-chip-meta {
-  color: #475569;
-  font-size: 0.85rem;
+  color: #64748b;
+  font-size: 0.82rem;
   font-weight: 500;
 }
 
@@ -110,14 +118,14 @@
 
 .emergency-search-card,
 .patient-profile-card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
 .emergency-search-card {
   padding: 28px;
-  border-radius: 28px;
+  border-radius: 20px;
   margin-bottom: 28px;
 }
 
@@ -134,15 +142,16 @@
 }
 
 .emergency-title {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 800;
-  margin-bottom: 8px;
+  color: #0f172a;
+  margin-bottom: 6px;
 }
 
 .emergency-subtitle {
   max-width: 58ch;
   color: #475569;
-  line-height: 1.7;
+  line-height: 1.65;
 }
 
 .search-row {
@@ -152,31 +161,40 @@
 
 .health-id-input {
   flex: 1;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-align: center;
   text-transform: uppercase;
+  color: #0056b3;
+  border-color: #cbd5e1;
 }
 
 .search-btn {
   border: none;
   min-width: 210px;
-  border-radius: 16px;
+  border-radius: 10px;
   font-size: 1rem;
   font-weight: 700;
   color: #ffffff;
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  box-shadow: 0 18px 28px rgba(220, 38, 38, 0.22);
+  background-color: #0056b3;
+  box-shadow: 0 4px 12px rgba(0, 86, 179, 0.2);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  background-color: #004085;
 }
 
 .search-btn:disabled {
-  opacity: 0.7;
+  background-color: #94a3b8;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
 .patient-profile-card {
-  border-radius: 28px;
+  border-radius: 20px;
   overflow: hidden;
 }
 
@@ -185,29 +203,30 @@
   justify-content: space-between;
   gap: 18px;
   align-items: center;
-  padding: 28px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 24px 28px;
+  background-color: #0056b3;
+  color: #ffffff;
 }
 
 .patient-name {
-  font-size: 1.7rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: #ffffff;
 }
 
 .patient-id-badge {
-  color: #cbd5e1;
-  margin-top: 6px;
-  letter-spacing: 0.1em;
-  font-size: 0.85rem;
+  color: #dbeafe;
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+  font-size: 0.88rem;
 }
 
 .access-logged-badge {
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(34, 197, 94, 0.18);
-  color: #bbf7d0;
-  font-size: 0.88rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.85rem;
   font-weight: 700;
 }
 
@@ -217,19 +236,19 @@
 
 .critical-section {
   margin-bottom: 24px;
-  padding: 22px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(251, 113, 133, 0.12));
-  border: 1px solid rgba(239, 68, 68, 0.14);
+  padding: 20px;
+  border-radius: 14px;
+  background-color: #fef2f2;
+  border: 1.5px solid #fecaca;
 }
 
 .critical-section-title,
 .details-section-title {
   margin-bottom: 14px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .critical-section-title {
@@ -241,7 +260,7 @@
 }
 
 .details-section-title {
-  color: #0f172a;
+  color: #0056b3;
 }
 
 .critical-grid {
@@ -253,46 +272,48 @@
 .critical-item,
 .detail-row,
 .emergency-contact-box {
-  border-radius: 18px;
+  border-radius: 12px;
 }
 
 .critical-item {
   padding: 16px;
-  background: rgba(255, 255, 255, 0.88);
+  background: #ffffff;
+  border: 1px solid #fecaca;
 }
 
 .critical-label {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   font-size: 0.76rem;
   color: #b91c1c;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .critical-value {
-  font-weight: 800;
+  font-weight: 700;
   color: #0f172a;
 }
 
 .blood-value {
-  font-size: 2.3rem;
+  font-size: 2.2rem;
   color: #dc2626;
+  font-weight: 800;
 }
 
 .details-grid {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .detail-row {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 14px 16px;
+  padding: 12px 16px;
   background: #f8fafc;
-  border: 1px solid rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
 }
 
 .detail-label {
@@ -300,23 +321,24 @@
   flex-shrink: 0;
   font-size: 0.9rem;
   font-weight: 700;
-  color: #475569;
+  color: #0056b3;
 }
 
 .detail-value {
-  color: #0f172a;
-  line-height: 1.7;
+  color: #1e293b;
+  line-height: 1.6;
 }
 
 .link-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .link-list a {
-  color: #0369a1;
+  color: #0056b3;
   word-break: break-all;
+  font-weight: 600;
 }
 
 .image-gallery {
@@ -328,34 +350,35 @@
 .image-thumb-link {
   display: block;
   overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
   background: #ffffff;
 }
 
 .image-thumb {
   width: 100%;
-  height: 170px;
+  height: 160px;
   object-fit: cover;
   display: block;
 }
 
 .emergency-contact-box {
   padding: 18px;
-  background: rgba(14, 165, 233, 0.08);
-  border: 1px solid rgba(14, 165, 233, 0.14);
+  background: #eef5fc;
+  border: 1.5px solid #cce5ff;
 }
 
 .contact-name {
   font-size: 1.05rem;
   font-weight: 700;
+  color: #1e293b;
 }
 
 .contact-phone {
-  margin-top: 6px;
+  margin-top: 4px;
   font-size: 1.4rem;
   font-weight: 800;
-  color: #0369a1;
+  color: #0056b3;
 }
 
 .no-contact {
@@ -382,27 +405,10 @@
 
   .search-btn {
     width: 100%;
-    min-height: 52px;
+    min-height: 48px;
   }
 
   .doctor-chip {
     align-items: flex-start;
-  }
-}
-
-@media (max-width: 640px) {
-  .emergency-header,
-  .emergency-content,
-  .portal-lock-shell {
-    padding-left: 18px;
-    padding-right: 18px;
-  }
-
-  .detail-row {
-    flex-direction: column;
-  }
-
-  .detail-label {
-    width: auto;
   }
 }
