@@ -12,9 +12,10 @@ import './RegisterPage.css'
 export function RegisterPage() {
 
   // Form field states
-  const [name,     setName]     = useState('');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
+  const [name,            setName]            = useState('');
+  const [email,           setEmail]           = useState('');
+  const [password,        setPassword]        = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // UI states
   const [loading,  setLoading]  = useState(false);
@@ -26,8 +27,13 @@ export function RegisterPage() {
   // handleRegister() — called when the form is submitted
   const handleRegister = async () => {
     // Basic client-side validation before sending to backend
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
       return;
     }
 
@@ -61,7 +67,7 @@ export function RegisterPage() {
         {/* Header */}
         <div className="auth-header">
           <Link to="/" className="auth-logo">🏥 Life Link</Link>
-          <h1>Create your patient account</h1>
+          <h1>Create your profile</h1>
           <p>Get your Health ID, upload emergency documents, and stay ready</p>
         </div>
 
@@ -95,13 +101,24 @@ export function RegisterPage() {
           </div>
 
           <div className="form-group">
-            <label>Password</label>
+            <label>Enter password</label>
             <input
               type="password"
               className="form-input"
-              placeholder="At least 6 characters"
+              placeholder="Enter password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Confirm password</label>
+            <input
+              type="password"
+              className="form-input"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
 

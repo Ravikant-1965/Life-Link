@@ -76,7 +76,7 @@ export function DoctorLoginPage({ loginDoctor }) {
             <div className="auth-page">
                 <div className="auth-card">
                     <div className="auth-header">
-                        <Link to="/" className="auth-logo">🏥 Life Link</Link>
+                        <Link to="/" className="auth-logo">Life Link</Link>
                         <h1>2-Step Verification 🔐</h1>
                         <p>Enter the 6-digit verification code from your authenticator app (e.g. Google Authenticator or Authy).</p>
                     </div>
@@ -131,20 +131,19 @@ export function DoctorLoginPage({ loginDoctor }) {
         <div className="auth-page">
             <div className="auth-card">
                 <div className="auth-header">
-                    <Link to="/" className="auth-logo">🏥 Life Link</Link>
+                    <Link to="/" className="auth-logo">Life Link</Link>
                     <h1>Verified doctor login</h1>
-                    <p>Only approved doctor accounts can access emergency patient profiles.</p>
                 </div>
 
                 {error && <div className="error-message">{error}</div>}
 
                 <div className="auth-form">
                     <div className="form-group">
-                        <label>Doctor Email</label>
+                        <label>Email address</label>
                         <input
                             type="email"
                             className="form-input"
-                            placeholder="e.g. doctor@hospital.org"
+                            placeholder="Enter email address"
                             value={email}
                             onChange={(event) => setEmail(event.target.value)}
                         />
