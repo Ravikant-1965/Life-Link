@@ -4,12 +4,60 @@ import api from '../../api';
 import { RegisterChoiceModal } from '../../components/RegisterChoiceModal/RegisterChoiceModal';
 import './LandingPage.css';
 
+const PROJECT_MOTTOS = [
+    "Bridging patients and verified emergency doctors with instant, offline-ready medical records when every second matters.",
+    "Critical allergy, blood group, and emergency contact visibility — unlocked strictly by verified doctors in moments of crisis.",
+    "A portable, tamper-proof digital health identity ready on ambulances, lock screens, and emergency rooms.",
+    "Because in critical trauma and emergency decisions, the right information in the right hands saves lives."
+];
+
 export function LandingPage({ user, doctor, logout, logoutDoctor }) {
     const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
     const [openFaq, setOpenFaq] = useState(null);
     const [visitorCount, setVisitorCount] = useState(1428);
     const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
     const hasIncrementedRef = useRef(false);
+
+    // Typewriter effect state for project goal motto (cycles every ~15 seconds)
+    const [mottoIndex, setMottoIndex] = useState(0);
+    const [displayedMotto, setDisplayedMotto] = useState(PROJECT_MOTTOS[0]);
+    const [isDeletingMotto, setIsDeletingMotto] = useState(false);
+    const [isPaused, setIsPaused] = useState(true);
+
+    useEffect(() => {
+        const fullMotto = PROJECT_MOTTOS[mottoIndex];
+        let timer;
+
+        if (isPaused) {
+            // Hold completed motto for ~11 seconds so user can comfortably read it
+            timer = setTimeout(() => {
+                setIsPaused(false);
+                setIsDeletingMotto(true);
+            }, 11000);
+        } else if (isDeletingMotto) {
+            // Delete text smoothly
+            if (displayedMotto.length > 0) {
+                timer = setTimeout(() => {
+                    setDisplayedMotto(fullMotto.slice(0, displayedMotto.length - 1));
+                }, 14);
+            } else {
+                setIsDeletingMotto(false);
+                setMottoIndex((prev) => (prev + 1) % PROJECT_MOTTOS.length);
+            }
+        } else {
+            // Type next motto forward character by character
+            if (displayedMotto.length < fullMotto.length) {
+                timer = setTimeout(() => {
+                    setDisplayedMotto(fullMotto.slice(0, displayedMotto.length + 1));
+                }, 26);
+            } else {
+                // Completed typing, pause again for ~11 seconds
+                setIsPaused(true);
+            }
+        }
+
+        return () => clearTimeout(timer);
+    }, [displayedMotto, isDeletingMotto, isPaused, mottoIndex]);
 
     useEffect(() => {
         if (hasIncrementedRef.current) return;
@@ -109,15 +157,19 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
 
             <section className="hero-section">
                 <div className="hero-copy">
-                    <div className="hero-badge">Verified doctor access. Faster emergency decisions.</div>
+                    <div className="hero-badge">Verified doctor access · Faster emergency decisions</div>
                     <h1 className="hero-title">
-                        Life Link makes your critical health data available
-                        <span className="hero-highlight"> only to authenticated, verified doctors.</span>
+                        When Seconds Count,
+                        <span className="hero-highlight"> Identity Saves Lives.</span>
                     </h1>
-                    <p className="hero-subtitle">
-                        Patients maintain emergency-ready records with document uploads, medication photos, and trusted contact details.
-                        Doctors sign in, verify themselves, and unlock the information they need when every minute matters.
-                    </p>
+                    
+                    <div className="hero-motto-wrapper">
+                        <span className="motto-icon-badge">“</span>
+                        <p className="hero-motto-text">
+                            {displayedMotto}
+                            <span className="typewriter-cursor">|</span>
+                        </p>
+                    </div>
 
                     {(user || doctor) && (
                         <div className="hero-actions">
@@ -127,45 +179,24 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                     )}
 
                     <div className="hero-trust">
-                        <div className="trust-pill">Doctor login required</div>
-                        <div className="trust-pill">Verification-gated patient access</div>
-                        <div className="trust-pill">Mobile-ready emergency lookup</div>
+                        <div className="trust-pill">Offline-ready Emergency ID</div>
+                        <div className="trust-pill">Doctor Verification Required</div>
+                        <div className="trust-pill">Instant QR Scan in Transit</div>
                     </div>
                 </div>
 
                 <div className="hero-panel">
-                    <div className="profile-preview-wrapper">
-                        <img src="/logo_cross.png" alt="Life Link Logo" className="hero-cross-floating" />
-                        <div className="profile-preview-card">
-                            <div className="preview-header">
-                                <span>Emergency Snapshot</span>
-                                <span className="preview-status">Verified Doctor View</span>
-                            </div>
-
-                            <div className="preview-row">
-                                <span>Health ID</span>
-                                <strong>LL-K7P2Q</strong>
-                            </div>
-                            <div className="preview-row">
-                                <span>Blood Group</span>
-                                <strong className="preview-blood">O+</strong>
-                            </div>
-                            <div className="preview-row">
-                                <span>Critical Allergies</span>
-                                <strong>Penicillin, Peanuts</strong>
-                            </div>
-                            <div className="preview-row">
-                                <span>Medication Photos</span>
-                                <strong>3 attached</strong>
-                            </div>
-                            <div className="preview-row">
-                                <span>Medical Records</span>
-                                <strong>Scans + Drive links</strong>
-                            </div>
-
-                            <div className="preview-audit">
-                                Every emergency view is linked to a doctor identity and written to the patient access log.
-                            </div>
+                    <div className="hero-curved-wrapper">
+                        <div className="hero-curved-card">
+                            <img
+                                src="/doctor_consultation.jpg"
+                                alt="Emergency Doctor Care"
+                                className="hero-curved-img"
+                            />
+                        </div>
+                        {/* Stethoscope badge kept on the circular cut */}
+                        <div className="floating-pill-badge badge-left-stethoscope" title="Verified Medical Access">
+                            <span className="stethoscope-icon-box">🩺</span>
                         </div>
                     </div>
                 </div>
@@ -204,14 +235,46 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         <h2 className="care-title">
                             Simple access to <span className="care-highlight">care. anytime, anywhere</span>
                         </h2>
+                        <p className="care-description">
+                            When trauma or sudden accidents strike, authorized emergency teams scan your portable Health ID to instantly unlock blood group, allergies, medications, and trusted contacts — even with zero internet connectivity.
+                        </p>
                     </div>
 
-                    <div className="care-access-image-wrapper">
-                        <img
-                            src="/doctor_consultation.jpg"
-                            alt="Doctor Patient Care"
-                            className="care-doctor-img"
-                        />
+                    <div className="care-snapshot-wrapper">
+                        <div className="profile-preview-wrapper care-preview-wrapper">
+                            <img src="/logo_cross.png" alt="Life Link Logo" className="hero-cross-floating" />
+                            <div className="profile-preview-card">
+                                <div className="preview-header">
+                                    <span>Emergency Snapshot</span>
+                                    <span className="preview-status">Verified Doctor View</span>
+                                </div>
+
+                                <div className="preview-row">
+                                    <span>Health ID</span>
+                                    <strong>LL-K7P2Q</strong>
+                                </div>
+                                <div className="preview-row">
+                                    <span>Blood Group</span>
+                                    <strong className="preview-blood">O+</strong>
+                                </div>
+                                <div className="preview-row">
+                                    <span>Critical Allergies</span>
+                                    <strong>Penicillin, Peanuts</strong>
+                                </div>
+                                <div className="preview-row">
+                                    <span>Medication Photos</span>
+                                    <strong>3 attached</strong>
+                                </div>
+                                <div className="preview-row">
+                                    <span>Medical Records</span>
+                                    <strong>Scans + Drive links</strong>
+                                </div>
+
+                                <div className="preview-audit">
+                                    Every emergency view is linked to a doctor identity and written to the patient access log.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
