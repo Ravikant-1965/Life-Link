@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api';
+import {
+    saveDoctorPatientOffline,
+    getDoctorPatientOffline,
+    queueOfflineAuditLog,
+    syncPendingAuditLogs
+} from '../../utils/offlineStorage';
 import './EmergencyPage.css';
 
 function DoctorAccessGuard({ healthId }) {
@@ -300,6 +306,8 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
     const [timeLeft, setTimeLeft] = useState(0);
     const [showMfaModal, setShowMfaModal] = useState(false);
     const [doctorInfo, setDoctorInfo] = useState(doctor);
+    const [isOfflineSnapshot, setIsOfflineSnapshot] = useState(false);
+    const [offlineNotice, setOfflineNotice] = useState('');
     const [searchParams] = useSearchParams();
 
     const idFromUrl = searchParams.get('healthId');
@@ -308,6 +316,24 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
         setPatientData(null);
         setError('Your authorized viewing session has expired. Please re-enter the Patient ID to continue.');
     };
+
+    useEffect(() => {
+        const handleOnline = async () => {
+            if (doctorToken) {
+                const synced = await syncPendingAuditLogs(api, doctorToken);
+                if (synced) {
+                    setOfflineNotice('');
+                }
+            }
+        };
+
+        window.addEventListener('online', handleOnline);
+        if (navigator.onLine && doctorToken) {
+            syncPendingAuditLogs(api, doctorToken);
+        }
+
+        return () => window.removeEventListener('online', handleOnline);
+    }, [doctorToken]);
 
     useEffect(() => {
         if (!patientData || !patientData.expiresAt) {
@@ -365,7 +391,33 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
 
         setLoading(true);
         setError('');
-        setPatientData(null);
+        setOfflineNotice('');
+
+        // If currently offline, directly read from device cache
+        if (!navigator.onLine) {
+            const cachedPatient = getDoctorPatientOffline(searchId);
+            if (cachedPatient) {
+                setPatientData({
+                    ...cachedPatient,
+                    expiresAt: Date.now() + 30 * 60 * 1000
+                });
+                setIsOfflineSnapshot(true);
+                queueOfflineAuditLog({
+                    healthId: searchId,
+                    doctorId: doctorInfo?.id || doctor?.id,
+                    doctorName: doctorInfo?.name || doctor?.name,
+                    accessedAt: new Date().toISOString()
+                });
+                setOfflineNotice('Operating Offline: Displaying emergency snapshot cached on this device. Access audit has been logged locally and will automatically synchronize once reconnected.');
+                setLoading(false);
+                return;
+            } else {
+                setPatientData(null);
+                setError(`Device is offline and no cached emergency snapshot exists for Health ID ${searchId}. Please connect to the internet to perform the initial lookup.`);
+                setLoading(false);
+                return;
+            }
+        }
 
         try {
             let response;
@@ -384,7 +436,31 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
             }
 
             setPatientData(response.data);
+            setIsOfflineSnapshot(false);
+            // Save to doctor cache for subsequent offline emergency room / ambulance use
+            saveDoctorPatientOffline(response.data);
         } catch (requestError) {
+            // If request failed due to offline / lost network
+            if (!requestError.response || !navigator.onLine) {
+                const cachedPatient = getDoctorPatientOffline(searchId);
+                if (cachedPatient) {
+                    setPatientData({
+                        ...cachedPatient,
+                        expiresAt: Date.now() + 30 * 60 * 1000
+                    });
+                    setIsOfflineSnapshot(true);
+                    queueOfflineAuditLog({
+                        healthId: searchId,
+                        doctorId: doctorInfo?.id || doctor?.id,
+                        doctorName: doctorInfo?.name || doctor?.name,
+                        accessedAt: new Date().toISOString()
+                    });
+                    setOfflineNotice('Network lost: Switched to device-cached emergency snapshot. Access audit queued locally.');
+                    setLoading(false);
+                    return;
+                }
+            }
+
             const message = requestError.response?.data?.message;
             const status = requestError.response?.status;
 
@@ -404,12 +480,14 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
         return <DoctorAccessGuard healthId={healthId || idFromUrl} />;
     }
 
-
     return (
         <div className="emergency-page">
             <div className="emergency-header">
                 <div className="emergency-header-content">
-                    <Link to="/" className="emergency-logo">+ Life Link Doctor Portal</Link>
+                    <Link to="/" className="emergency-logo">
+                        <img src="/logo_cross.png" alt="Life Link Logo" className="portal-header-logo-icon" />
+                        <span>Life Link Doctor Portal</span>
+                    </Link>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         {patientData && <CircularTimer timeLeft={timeLeft} />}
                         <button
@@ -479,16 +557,31 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                     </div>
 
                     {error && <div className="error-message">{error}</div>}
+                    {offlineNotice && (
+                        <div className="offline-notice-banner">
+                            <span className="offline-badge-pill">⚡ Offline Mode</span>
+                            <span className="offline-notice-text">{offlineNotice}</span>
+                        </div>
+                    )}
                 </div>
 
                 {patientData && (
                     <div className="patient-profile-card">
                         <div className="patient-profile-header">
                             <div>
-                                <div className="patient-name">{patientData.user.name}</div>
-                                <div className="patient-id-badge">Health ID: {patientData.user.healthId}</div>
+                                <div className="patient-name">{patientData.user?.name || patientData.patientName}</div>
+                                <div className="patient-id-badge">Health ID: {patientData.user?.healthId || patientData.healthId}</div>
                             </div>
-                            <div className="access-logged-badge">Verified access logged</div>
+                            <div className="patient-header-status-group">
+                                {isOfflineSnapshot && (
+                                    <div className="offline-tag-badge">
+                                        ⚡ Device Cached
+                                    </div>
+                                )}
+                                <div className={`access-logged-badge ${isOfflineSnapshot ? 'offline-sync-pending' : ''}`}>
+                                    {isOfflineSnapshot ? 'Audit Queued Locally' : 'Verified access logged'}
+                                </div>
+                            </div>
                         </div>
 
                         <div className="patient-profile-body">

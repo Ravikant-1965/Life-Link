@@ -15,4 +15,18 @@ createRoot(document.getElementById('root')).render(
       <App />
     </BrowserRouter>
   </StrictMode>,
-)
+);
+
+// Register Progressive Web App Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(
+      (registration) => {
+        console.log('Life Link ServiceWorker registered with scope:', registration.scope);
+      },
+      (err) => {
+        console.warn('Life Link ServiceWorker registration failed:', err);
+      }
+    );
+  });
+}

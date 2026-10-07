@@ -53,7 +53,7 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
     const faqs = [
         {
             question: "1. Do you support insurance?",
-            answer: "Yes, we integrate with primary health plans and provide exportable diagnostic summaries for claims and hospital verification."
+            answer: "Currently, direct insurance integration is not supported yet. However, patients can store emergency records and share exportable medical summaries directly with verified doctors when needed."
         },
         {
             question: "2. How do verified doctors access my emergency profile?",
@@ -317,7 +317,6 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         </div>
 
                         <div className="footer-visitor-counter">
-                            <span className="visitor-eye-icon">👁</span>
                             <span>Total Visitors: <strong>{visitorCount.toLocaleString()}</strong></span>
                         </div>
                     </div>

@@ -9,16 +9,17 @@
 // If not logged in, redirect to login page.
 // ============================================================
 
-import { useState, useEffect } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { QRCodeSVG } from 'qrcode.react'  // QR code library
-import api from '../../api'
-import './DashboardPage.css'
+import { useState, useEffect } from 'react';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
+import api from '../../api';
+import { saveEmergencyCardOffline, getEmergencyCardOffline } from '../../utils/offlineStorage';
+import './DashboardPage.css';
 
 export function DashboardPage({ user, token, logout }) {
-
-  const [profile, setProfile] = useState(null);  // health profile data
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isOfflineCard, setIsOfflineCard] = useState(false);
 
   const navigate = useNavigate();
 
@@ -27,50 +28,62 @@ export function DashboardPage({ user, token, logout }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Fetch the user's profile from the backend when this page loads
+  // Fetch the user's profile from the backend or fallback to offline card
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        // We send the token in the Authorization header so backend knows who we are
         const response = await api.get('/api/profile', {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
-        setProfile(response.data.profile);  // might be null if not set up yet
+        const serverProfile = response.data.profile;
+        setProfile(serverProfile);
+        // Cache emergency card locally for offline emergency readiness
+        saveEmergencyCardOffline(serverProfile, user);
+        setIsOfflineCard(false);
       } catch (error) {
-        console.error('Failed to load profile:', error);
-        // If token expired (401 error), logout and redirect
+        console.warn('Network issue fetching live profile, checking offline storage:', error);
         if (error.response?.status === 401) {
           logout();
           navigate('/login');
+          return;
+        }
+
+        // Try offline cached emergency card
+        const cached = getEmergencyCardOffline();
+        if (cached && cached.profile) {
+          setProfile(cached.profile);
+          setIsOfflineCard(true);
         }
       }
       setLoading(false);
-    }
+    };
 
     fetchProfile();
-  }, [logout, navigate, token]);
-
+  }, [logout, navigate, token, user]);
 
   const qrCodeValue = `${window.location.origin}/doctor/portal?healthId=${user.healthId}`;
   const documentImages = profile?.document_images || [];
   const medicationImages = profile?.medication_images || [];
   const documentLinks = profile?.medical_file_links || [];
 
-
   if (loading) {
-    return <div className="loading-text">Loading your dashboard...</div>
+    return <div className="loading-text">Loading your dashboard...</div>;
   }
-
 
   return (
     <div className="dashboard-page">
-
       {/* ---- HEADER / NAVBAR ---- */}
       <nav className="dashboard-nav">
-        <Link to="/" className="nav-logo-text">🏥 Life Link</Link>
+        <Link to="/" className="nav-logo-text">
+          <img src="/logo_cross.png" alt="Life Link Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '8px' }} />
+          <span>Life Link</span>
+        </Link>
         <div className="nav-right">
+          {isOfflineCard && (
+            <span className="offline-pill" title="Loaded from device storage">⚡ Offline Card</span>
+          )}
           <Link to="/access-log" className="nav-link">📋 Access Log</Link>
           <button onClick={logout} className="btn-secondary nav-logout-btn">Logout</button>
         </div>

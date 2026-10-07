@@ -12,6 +12,9 @@ import { DoctorLoginPage } from './pages/DoctorLoginPage/DoctorLoginPage';
 import { DoctorRegisterPage } from './pages/DoctorRegisterPage/DoctorRegisterPage';
 import { ForgotPasswordPage } from './pages/LoginPage/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/LoginPage/ResetPasswordPage';
+import { NetworkStatusBanner } from './components/NetworkStatusBanner/NetworkStatusBanner';
+import { syncAllPendingData } from './utils/offlineStorage';
+import api from './api';
 
 import './App.css';
 
@@ -60,10 +63,12 @@ function App() {
     };
 
     return (
-        <Routes>
-            <Route
-                path="/"
-                element={
+        <div className="app-shell">
+            <NetworkStatusBanner onSync={() => syncAllPendingData(api, { userToken: token, doctorToken })} />
+            <Routes>
+                <Route
+                    path="/"
+                    element={
                     <LandingPage
                         user={user}
                         doctor={doctor}
@@ -107,7 +112,8 @@ function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-    );
+    </div>
+);
 }
 
 export default App;

@@ -1119,6 +1119,37 @@ app.get('/api/access-log', checkPatientAuth, (req, res) => {
     res.send(logs);
 });
 
+app.post('/api/access-log/offline-sync', checkDoctorAuth, (req, res) => {
+    const { logs } = req.body;
+    if (!Array.isArray(logs) || logs.length === 0) {
+        return res.status(400).send({ message: 'Valid logs array is required.' });
+    }
+
+    const db = getDb();
+    const insertStmt = db.prepare(`
+        INSERT INTO access_logs (
+            health_id, doctor_id, doctor_name, doctor_email, doctor_license, accessed_at
+        ) VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    let insertedCount = 0;
+    for (const log of logs) {
+        if (log && log.healthId) {
+            insertStmt.run(
+                log.healthId.trim().toUpperCase(),
+                req.doctor.id,
+                req.doctor.name,
+                req.doctor.email,
+                req.doctor.license_number,
+                log.accessedAt || new Date().toISOString()
+            );
+            insertedCount++;
+        }
+    }
+
+    res.send({ success: true, count: insertedCount });
+});
+
 const server = app.listen(PORT, () => {
     console.log('\nLife Link backend is running!');
     console.log(`Listening on port ${PORT}`);

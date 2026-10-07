@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import api from '../../api';
+import {
+    saveEmergencyCardOffline,
+    getEmergencyCardOffline,
+    savePendingProfileUpdate
+} from '../../utils/offlineStorage';
 import './EditProfilePage.css';
 
 function readFilesAsDataUrls(fileList) {
@@ -66,6 +71,24 @@ export function EditProfilePage({ user, token, logout }) {
         return <Navigate to="/login" replace />;
     }
 
+    const populateForm = (profile) => {
+        if (!profile) return;
+        setFullName(profile.full_name || profile.fullName || '');
+        setDateOfBirth(profile.date_of_birth || profile.dateOfBirth || '');
+        setBloodGroup(profile.blood_group || profile.bloodGroup || '');
+        setAllergies(profile.allergies || '');
+        setChronicConditions(profile.chronic_conditions || profile.chronicConditions || '');
+        setCurrentMedications(profile.current_medications || profile.currentMedications || '');
+        setPreviousSurgeries(profile.previous_surgeries || profile.previousSurgeries || '');
+        setPreviousPrescriptions(profile.previous_prescriptions || profile.previousPrescriptions || '');
+        setEmergencyContactName(profile.emergency_contact_name || profile.emergencyContactName || '');
+        setEmergencyContactPhone(profile.emergency_contact_phone || profile.emergencyContactPhone || '');
+        setOrganDonorStatus(profile.organ_donor_status || profile.organDonorStatus || 'Not specified');
+        setDocumentLinks(profile.medical_file_links?.join('\n') || profile.medical_files || profile.documentLinks || '');
+        setDocumentImages(profile.document_images || profile.documentImages || []);
+        setMedicationImages(profile.medication_images || profile.medicationImages || []);
+    };
+
     useEffect(() => {
         const loadProfile = async () => {
             try {
@@ -74,27 +97,20 @@ export function EditProfilePage({ user, token, logout }) {
                 });
 
                 const profile = response.data.profile;
-
                 if (profile) {
-                    setFullName(profile.full_name || '');
-                    setDateOfBirth(profile.date_of_birth || '');
-                    setBloodGroup(profile.blood_group || '');
-                    setAllergies(profile.allergies || '');
-                    setChronicConditions(profile.chronic_conditions || '');
-                    setCurrentMedications(profile.current_medications || '');
-                    setPreviousSurgeries(profile.previous_surgeries || '');
-                    setPreviousPrescriptions(profile.previous_prescriptions || '');
-                    setEmergencyContactName(profile.emergency_contact_name || '');
-                    setEmergencyContactPhone(profile.emergency_contact_phone || '');
-                    setOrganDonorStatus(profile.organ_donor_status || 'Not specified');
-                    setDocumentLinks(profile.medical_file_links?.join('\n') || profile.medical_files || '');
-                    setDocumentImages(profile.document_images || []);
-                    setMedicationImages(profile.medication_images || []);
+                    populateForm(profile);
+                    saveEmergencyCardOffline(profile, user);
                 }
             } catch (requestError) {
                 if (requestError.response?.status === 401) {
                     logout();
                     navigate('/login');
+                    return;
+                }
+                // Try prefilling from offline cache
+                const cached = getEmergencyCardOffline();
+                if (cached && cached.profile) {
+                    populateForm(cached.profile);
                 }
             }
 
@@ -102,7 +118,7 @@ export function EditProfilePage({ user, token, logout }) {
         };
 
         loadProfile();
-    }, [logout, navigate, token]);
+    }, [logout, navigate, token, user]);
 
     const [uploadingImages, setUploadingImages] = useState(false);
 
@@ -157,39 +173,57 @@ export function EditProfilePage({ user, token, logout }) {
         setError('');
         setSuccess('');
 
-        try {
-            await api.post(
-                '/api/profile',
-                {
-                    fullName,
-                    dateOfBirth,
-                    bloodGroup,
-                    allergies,
-                    chronicConditions,
-                    currentMedications,
-                    previousSurgeries,
-                    previousPrescriptions,
-                    emergencyContactName,
-                    emergencyContactPhone,
-                    organDonorStatus,
-                    documentLinks,
-                    documentImages,
-                    medicationImages
-                },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
+        const profileData = {
+            fullName,
+            dateOfBirth,
+            bloodGroup,
+            allergies,
+            chronicConditions,
+            currentMedications,
+            previousSurgeries,
+            previousPrescriptions,
+            emergencyContactName,
+            emergencyContactPhone,
+            organDonorStatus,
+            documentLinks,
+            documentImages,
+            medicationImages
+        };
 
-            setSuccess('Health profile saved successfully!');
+        // Always save to offline device emergency card immediately
+        saveEmergencyCardOffline(profileData, user);
+
+        if (!navigator.onLine) {
+            // Queue offline update for cloud sync when connection returns
+            savePendingProfileUpdate(profileData);
+            setSuccess('⚡ Saved offline! Profile updated on this device and queued to sync with cloud once reconnected.');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setSaving(false);
+            setTimeout(() => {
+                navigate('/dashboard');
+            }, 1800);
+            return;
+        }
+
+        try {
+            await api.post('/api/profile', profileData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setSuccess('Health profile saved and synchronized with cloud successfully!');
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
             setTimeout(() => {
                 navigate('/dashboard');
             }, 1500);
         } catch (requestError) {
-            setError(requestError.response?.data?.message || 'Failed to save. Please try again.');
+            // Fallback to offline queue if network drops mid-save
+            savePendingProfileUpdate(profileData);
+            setSuccess('⚡ Saved offline! Server was unreachable, changes queued to sync automatically.');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => {
+                navigate('/dashboard');
+            }, 1800);
         }
 
         setSaving(false);
@@ -202,7 +236,10 @@ export function EditProfilePage({ user, token, logout }) {
     return (
         <div className="edit-profile-page">
             <nav className="dashboard-nav">
-                <Link to="/dashboard" className="nav-logo-text">🏥 Life Link</Link>
+                <Link to="/dashboard" className="nav-logo-text">
+                    <img src="/logo_cross.png" alt="Life Link Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', verticalAlign: 'middle', marginRight: '8px' }} />
+                    <span>Life Link</span>
+                </Link>
                 <div className="nav-right">
                     <Link to="/dashboard" className="nav-link">← Back to Dashboard</Link>
                 </div>
