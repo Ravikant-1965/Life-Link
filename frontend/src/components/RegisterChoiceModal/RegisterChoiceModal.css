@@ -1,0 +1,170 @@
+/* RegisterChoiceModal.css — Premium glassmorphic selection modal */
+
+.choice-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    animation: fadeInModal 0.2s ease-out;
+}
+
+@keyframes fadeInModal {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.choice-modal-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 520px;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(1, 138, 190, 0.25);
+    border: 1.5px solid #e2e8f0;
+    animation: slideUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpModal {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.choice-modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: #f1f5f9;
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 16px;
+    color: #64748b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.choice-modal-close:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.choice-modal-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.choice-badge {
+    display: inline-block;
+    background: #e0f2fe;
+    color: #018ABE;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.choice-modal-header h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 6px;
+}
+
+.choice-modal-header p {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.choice-options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.choice-option-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100%;
+}
+
+.choice-option-card:hover {
+    border-color: #018ABE;
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(1, 138, 190, 0.12);
+}
+
+.choice-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #e0f2fe;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.choice-card-text {
+    flex: 1;
+}
+
+.choice-card-text h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 4px;
+}
+
+.choice-card-text p {
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.choice-arrow-icon {
+    font-size: 20px;
+    color: #94a3b8;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.choice-option-card:hover .choice-arrow-icon {
+    color: #018ABE;
+    transform: translateX(4px);
+}

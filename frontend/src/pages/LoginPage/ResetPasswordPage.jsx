@@ -71,7 +71,10 @@ export function ResetPasswordPage() {
         <div className="auth-page">
             <div className="auth-card">
                 <div className="auth-header">
-                    <Link to="/" className="auth-logo">🏥 Life Link</Link>
+                    <Link to="/" className="auth-logo">
+                        <img src="/logo_cross.png" alt="Life Link Logo" className="auth-logo-img" />
+                        <span>Life Link</span>
+                    </Link>
                     <h1>Reset Password</h1>
                     <p>Enter your new password below.</p>
                 </div>

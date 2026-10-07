@@ -388,6 +388,29 @@ app.get('/api/health', (_req, res) => {
     });
 });
 
+app.get('/api/visitors', (_req, res) => {
+    try {
+        const db = getDb();
+        const row = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
+        const count = row ? row.value : 1428;
+        res.send({ count });
+    } catch (_err) {
+        res.status(500).send({ message: 'Failed to fetch visitor count', count: 1428 });
+    }
+});
+
+app.post('/api/visitors/increment', (_req, res) => {
+    try {
+        const db = getDb();
+        db.prepare('UPDATE site_stats SET value = value + 1 WHERE key = ?').run('total_visitors');
+        const row = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
+        const count = row ? row.value : 1429;
+        res.send({ count });
+    } catch (_err) {
+        res.status(500).send({ message: 'Failed to increment visitor count' });
+    }
+});
+
 app.post('/api/register', (req, res) => {
     const { name, email, password } = req.body;
 

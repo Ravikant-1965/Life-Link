@@ -74,12 +74,12 @@ function App() {
             />
 
             <Route path="register" element={<RegisterPage />} />
-            <Route path="login" element={<LoginPage login={login} />} />
+            <Route path="login" element={<LoginPage login={login} loginDoctor={loginDoctor} />} />
             <Route path="forgot-password" element={<ForgotPasswordPage />} />
             <Route path="reset-password" element={<ResetPasswordPage />} />
 
             <Route path="doctor/register" element={<DoctorRegisterPage />} />
-            <Route path="doctor/login" element={<DoctorLoginPage loginDoctor={loginDoctor} />} />
+            <Route path="doctor/login" element={<LoginPage login={login} loginDoctor={loginDoctor} />} />
             <Route
                 path="doctor/portal"
                 element={

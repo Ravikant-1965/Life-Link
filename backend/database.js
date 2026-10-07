@@ -113,6 +113,18 @@ function initDatabase() {
         )
     `);
 
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS site_stats (
+            key             TEXT PRIMARY KEY,
+            value           INTEGER NOT NULL DEFAULT 0
+        )
+    `);
+
+    const existingVisitors = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
+    if (!existingVisitors) {
+        db.prepare('INSERT INTO site_stats (key, value) VALUES (?, ?)').run('total_visitors', 1428);
+    }
+
     ensureColumn('profiles', 'medical_files', 'TEXT');
     ensureColumn('profiles', 'document_images', "TEXT DEFAULT '[]'");
     ensureColumn('profiles', 'medication_images', "TEXT DEFAULT '[]'");

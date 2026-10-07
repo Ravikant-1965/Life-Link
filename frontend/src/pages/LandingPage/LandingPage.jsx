@@ -1,10 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../../api';
+import { RegisterChoiceModal } from '../../components/RegisterChoiceModal/RegisterChoiceModal';
 import './LandingPage.css';
 
 export function LandingPage({ user, doctor, logout, logoutDoctor }) {
     const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
-    const [openFaq, setOpenFaq] = useState(2);
+    const [openFaq, setOpenFaq] = useState(null);
+    const [visitorCount, setVisitorCount] = useState(1428);
+    const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+    const hasIncrementedRef = useRef(false);
+
+    useEffect(() => {
+        if (hasIncrementedRef.current) return;
+        hasIncrementedRef.current = true;
+
+        api.post('/api/visitors/increment')
+            .then((res) => {
+                if (res.data && typeof res.data.count === 'number') {
+                    setVisitorCount(res.data.count);
+                }
+            })
+            .catch(() => {
+                const currentVisits = parseInt(localStorage.getItem('lifelink_visit_count') || '1428', 10);
+                const updatedVisits = currentVisits + 1;
+                localStorage.setItem('lifelink_visit_count', updatedVisits.toString());
+                setVisitorCount(updatedVisits);
+            });
+    }, []);
+
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     const testimonials = [
         {
@@ -58,9 +85,7 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                 </div>
 
                 <div className="nav-links">
-                    <a href="#testimonials" className="nav-link">Reviews</a>
                     <a href="#how-it-works" className="nav-link">How it works</a>
-                    <a href="#security" className="nav-link">Security</a>
                     <a href="#faqs" className="nav-link">FAQs</a>
 
                     {doctor ? (
@@ -75,8 +100,8 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         </>
                     ) : (
                         <>
-                            <Link to="/doctor/login" className="nav-btn btn-secondary">Doctor Login</Link>
-                            <Link to="/register" className="nav-btn btn-primary">Create Profile</Link>
+                            <Link to="/login" className="nav-btn btn-secondary">LogIn</Link>
+                            <button onClick={() => setIsChoiceModalOpen(true)} className="nav-btn btn-primary">Create new profile</button>
                         </>
                     )}
                 </div>
@@ -94,22 +119,12 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         Doctors sign in, verify themselves, and unlock the information they need when every minute matters.
                     </p>
 
-                    <div className="hero-actions">
-                        {user ? (
-                            <Link to="/dashboard" className="hero-btn-primary">Open Patient Dashboard</Link>
-                        ) : (
-                            <>
-                                <Link to="/register" className="hero-btn-primary">Create Profile</Link>
-                                <Link to="/login" className="hero-btn-secondary">Patient Login</Link>
-                            </>
-                        )}
-
-                        {doctor ? (
-                            <Link to="/doctor/portal" className="hero-btn-ghost">Go to Doctor Portal</Link>
-                        ) : (
-                            <Link to="/doctor/login" className="hero-btn-ghost">Verified Doctor Access</Link>
-                        )}
-                    </div>
+                    {(user || doctor) && (
+                        <div className="hero-actions">
+                            {user && <Link to="/dashboard" className="hero-btn-primary">Open Patient Dashboard</Link>}
+                            {doctor && <Link to="/doctor/portal" className="hero-btn-ghost">Go to Doctor Portal</Link>}
+                        </div>
+                    )}
 
                     <div className="hero-trust">
                         <div className="trust-pill">Doctor login required</div>
@@ -186,22 +201,9 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
             <section className="care-access-section">
                 <div className="care-access-card">
                     <div className="care-access-content">
-                        <div className="care-badge">
-                            <span className="star-icon">★</span> 50k+ Happy Patients
-                        </div>
-
                         <h2 className="care-title">
                             Simple access to <span className="care-highlight">care. anytime, anywhere</span>
                         </h2>
-
-                        <p className="care-description">
-                            Search by specialty, location, or symptoms and choose the right doctor with confidence. See real-time availability.
-                        </p>
-
-                        <div className="care-actions">
-                            <Link to="/register" className="care-btn-gold">Book Appointment</Link>
-                            <Link to="/doctor/login" className="care-btn-teal">Find a Doctor</Link>
-                        </div>
                     </div>
 
                     <div className="care-access-image-wrapper">
@@ -284,42 +286,55 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                 </div>
             </section>
 
-            <section id="security" className="security-section">
-                <div className="section-heading section-heading-light">
-                    <p className="section-kicker">Security and trust</p>
-                    <h2>Stronger privacy by default</h2>
+            <footer className="main-footer">
+                <div className="footer-top-grid">
+                    <div className="footer-brand-col">
+                        <div className="footer-logo">
+                            <img src="/logo_cross.png" alt="Life Link Logo" className="footer-logo-img" />
+                            <span className="footer-logo-text">Life Link</span>
+                        </div>
+
+                        <h3 className="footer-brand-heading">Doctor and emergency responder access</h3>
+                        <p className="footer-brand-desc">
+                            Access a patient’s emergency profile securely using their Health ID or QR code. Doctor account login and verification are required.
+                        </p>
+                        <p className="footer-brand-subdesc">
+                            Life Link helps patients stay prepared and helps verified doctors act faster in emergencies. Keep records updated, review your access logs, and store only the medical data you want available in emergencies.
+                        </p>
+                    </div>
+
+                    <div className="footer-contact-col">
+                        <div className="social-icons-group">
+                            <a href="mailto:ravikantm128@gmail.com" className="social-badge-icon" aria-label="Email Us">✉</a>
+                            <a href="https://x.com/Raja_G_1965" target="_blank" rel="noreferrer" className="social-badge-icon" aria-label="X Profile">𝕏</a>
+                        </div>
+                    </div>
+
+                    <div className="footer-links-col">
+                        <div className="footer-nav-menu">
+                            <a href="#how-it-works" className="footer-nav-item">How it works</a>
+                            <a href="#faqs" className="footer-nav-item">FAQs</a>
+                        </div>
+
+                        <div className="footer-visitor-counter">
+                            <span className="visitor-eye-icon">👁</span>
+                            <span>Total Visitors: <strong>{visitorCount.toLocaleString()}</strong></span>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="security-grid">
-                    <div className="security-card">
-                        <h3>Role-based access</h3>
-                        <p>Patient dashboards stay private, and emergency records stay hidden until a verified doctor logs in.</p>
-                    </div>
-                    <div className="security-card">
-                        <h3>Verification workflow</h3>
-                        <p>Doctor accounts include hospital, specialization, and license details, then move through approval before use.</p>
-                    </div>
-                    <div className="security-card">
-                        <h3>Traceable access logs</h3>
-                        <p>Every emergency lookup is written into the patient’s audit trail with doctor identity details.</p>
-                    </div>
+                <div className="footer-bottom-bar">
+                    <p className="footer-copyright">© 2026 Life Link Healthcare. All rights reserved.</p>
+                    <button onClick={scrollToTop} className="scroll-top-btn">
+                        Scroll Top <span className="scroll-arrow">^</span>
+                    </button>
                 </div>
-            </section>
-
-            <section className="doctor-message">
-                <div className="doctor-message-card">
-                    <img src="/logo_cross.png" alt="Life Link Cross Banner" className="banner-cross-img" />
-                    <h2>Doctor and emergency responder access</h2>
-                    <p>
-                        Access a patient’s emergency profile securely using their Health ID or QR code. Doctor account login and verification are required.
-                    </p>
-                </div>
-            </section>
-
-            <footer className="landing-footer">
-                <p>Life Link helps patients stay prepared and helps verified doctors act faster in emergencies.</p>
-                <p className="landing-footer-note">Keep records updated, review your access logs, and store only the medical data you want available in emergencies.</p>
             </footer>
+
+            <RegisterChoiceModal
+                isOpen={isChoiceModalOpen}
+                onClose={() => setIsChoiceModalOpen(false)}
+            />
         </div>
     );
 }

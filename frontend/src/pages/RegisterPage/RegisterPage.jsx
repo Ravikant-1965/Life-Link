@@ -66,7 +66,10 @@ export function RegisterPage() {
 
         {/* Header */}
         <div className="auth-header">
-          <Link to="/" className="auth-logo">🏥 Life Link</Link>
+          <Link to="/" className="auth-logo">
+            <img src="/logo_cross.png" alt="Life Link Logo" className="auth-logo-img" />
+            <span>Life Link</span>
+          </Link>
           <h1>Create your profile</h1>
           <p>Get your Health ID, upload emergency documents, and stay ready</p>
         </div>

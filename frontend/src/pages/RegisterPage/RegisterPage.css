@@ -25,12 +25,20 @@
 }
 
 .auth-logo {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 22px;
   font-weight: 800;
   color: #018ABE;
   text-decoration: none;
   margin-bottom: 14px;
+}
+
+.auth-logo-img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
 }
 
 .auth-header h1 {
