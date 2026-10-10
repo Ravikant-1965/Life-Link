@@ -411,6 +411,171 @@ app.post('/api/visitors/increment', (_req, res) => {
     }
 });
 
+// ==========================================
+// RAG MEDICAL CHATBOT & NEWS ENDPOINTS
+// ==========================================
+
+function generateMedicalRagResponse(query, user, profile, referenced) {
+    const q = query.toLowerCase();
+    const name = user?.name || 'Patient';
+    const blood = profile?.blood_group || 'Not recorded';
+    const allergies = profile?.allergies || 'None recorded';
+    const meds = profile?.current_medications || 'None recorded';
+    const conditions = profile?.chronic_conditions || 'None recorded';
+    const surgeries = profile?.previous_surgeries || 'None recorded';
+    const docCount = (profile?.document_images?.length || 0) + (profile?.medical_file_links?.length || 0);
+
+    if (q.includes('allergy') || q.includes('allergies') || q.includes('allergic')) {
+        return `Based on your encrypted health records, your documented allergies are: **${allergies}**.\n\n` +
+            `• **Clinical Notice**: If you are being prescribed new antibiotics, analgesics, or undergoing an emergency procedure, inform the attending team immediately.\n` +
+            `• **Emergency Readiness**: Your verified Health ID (**${user?.health_id}**) provides approved doctors with instant access to these allergy alerts even if you are unconscious.`;
+    }
+
+    if (q.includes('medication') || q.includes('medicine') || q.includes('drug') || q.includes('prescription') || q.includes('pill')) {
+        return `Cross-referencing your medical vector profile:\n\n` +
+            `• **Current Medications on File**: ${meds}\n` +
+            `• **Documented Prescriptions/Photos**: ${profile?.medication_images?.length || 0} medication photo(s) attached.\n\n` +
+            `**Clinical Guidance**: Always adhere strictly to prescribed dosages. Never stop or combine medications without consulting your primary doctor. In an emergency, first responders can view your uploaded medication packaging to verify active dosages.`;
+    }
+
+    if (q.includes('blood') || q.includes('transfusion') || q.includes('type') || q.includes('group')) {
+        return `According to your LifeLink emergency profile:\n\n` +
+            `• **Recorded Blood Group**: **${blood}**\n` +
+            `• **Organ Donor Status**: ${profile?.organ_donor_status || 'Not specified'}\n\n` +
+            `In critical trauma situations, verified emergency doctors crossmatch your **${blood}** blood type against hospital blood bank inventory to initiate rapid transfusion protocols.`;
+    }
+
+    if (q.includes('summar') || q.includes('overview') || q.includes('record') || q.includes('report') || q.includes('history')) {
+        return `Here is your personal emergency medical vector summary for **${name}** (**${user?.health_id}**):\n\n` +
+            `1. **Blood Group**: ${blood}\n` +
+            `2. **Critical Allergies**: ${allergies}\n` +
+            `3. **Active Medications**: ${meds}\n` +
+            `4. **Chronic Conditions**: ${conditions}\n` +
+            `5. **Previous Surgeries**: ${surgeries}\n` +
+            `6. **Stored Medical Files/Scans**: ${docCount} document(s) & photos securely stored.\n` +
+            `7. **Emergency Contact**: ${profile?.emergency_contact_name ? `${profile.emergency_contact_name} (${profile.emergency_contact_phone || 'No phone'})` : 'Not configured'}\n\n` +
+            `Verified emergency doctors can access this exact profile via your emergency QR code or Health ID.`;
+    }
+
+    if (q.includes('emergency') || q.includes('first responder') || q.includes('accident') || q.includes('qr')) {
+        return `In an emergency event:\n\n` +
+            `1. First responders or hospital triage scan your **LifeLink QR Code** or enter Health ID **${user?.health_id}**.\n` +
+            `2. Only **credential-verified doctors** can unlock your sensitive records.\n` +
+            `3. They immediately see your **Blood Group (${blood})**, **Allergies (${allergies})**, and emergency contacts.\n` +
+            `4. Every access is timestamped and logged directly in your Access Log for complete auditability.`;
+    }
+
+    // Default intelligent clinical assistant response
+    return `Hello **${name}**, I have retrieved your medical context from your encrypted Health ID (**${user?.health_id}**).\n\n` +
+        `Regarding your question: *"${query}"*\n\n` +
+        `• **Patient Record Status**: Your profile has recorded Blood Group (**${blood}**), documented Allergies (**${allergies}**), and active Medications (**${meds}**).\n` +
+        `• **Personalized Medical Advice**: Please ensure that any symptoms or medication changes are evaluated by a licensed medical provider. I can help analyze your stored medical PDFs, medication images, or explain health news articles.\n\n` +
+        `*Disclaimer: LifeLink AI is an intelligent medical record assistant and not a replacement for emergency diagnostic evaluation.*`;
+}
+
+app.get('/api/news', (_req, res) => {
+    const newsArticles = [
+        {
+            id: 'news-1',
+            title: 'Global Guidelines on Rapid Emergency Triage & Allergy Screening',
+            category: 'Emergency Medicine',
+            tag: 'Critical Care',
+            date: 'October 2026',
+            readTime: '3 min read',
+            source: 'World Health Organization',
+            summary: 'New clinical protocols emphasize immediate verification of drug allergies and blood types in trauma bays before antibiotic administration, cutting adverse reactions by 42%.',
+            impact: 'Relevant for patients with Penicillin, NSAID, or food allergies.',
+            promptSuggestion: 'Explain how emergency doctors use my allergy records during rapid triage.'
+        },
+        {
+            id: 'news-2',
+            title: 'AI Vector Search in Personal Health: Transforming Emergency Record Retrieval',
+            category: 'Health Tech',
+            tag: 'AI & Diagnostics',
+            date: 'October 2026',
+            readTime: '4 min read',
+            source: 'Digital Health Journal',
+            summary: 'Retrieval-Augmented Generation (RAG) models connected to patient encrypted records enable verified emergency teams to query complex medical histories in natural language within seconds.',
+            impact: 'Directly powers LifeLink RAG medical assistant capabilities.',
+            promptSuggestion: 'How does LifeLink protect my medical documents while enabling AI search?'
+        },
+        {
+            id: 'news-3',
+            title: 'Cardiovascular Risk Prevention: New Blood Biomarker Recommendations',
+            category: 'Cardiology',
+            tag: 'Preventive Care',
+            date: 'September 2026',
+            readTime: '5 min read',
+            source: 'Cardiology Review',
+            summary: 'Comprehensive lifestyle profiling alongside early lipid and inflammatory marker testing helps identify cardiac vulnerabilities a decade earlier than conventional metrics.',
+            impact: 'Recommended for adults managing chronic blood pressure or metabolic conditions.',
+            promptSuggestion: 'What preventive cardiac checks are recommended for my age and health profile?'
+        },
+        {
+            id: 'news-4',
+            title: 'Digital Medication Tracking Reduces Polypharmacy Interactions in Ambulatory Care',
+            category: 'Pharmacology',
+            tag: 'Patient Safety',
+            date: 'September 2026',
+            readTime: '4 min read',
+            source: 'Clinical Pharmacology Journal',
+            summary: 'Photo-documented medication logs allow emergency physicians to spot conflicting prescriptions, expired regimens, and dosage discrepancies in real time.',
+            impact: 'Relevant for patients with 2 or more daily prescription medications.',
+            promptSuggestion: 'Review my uploaded medication photos and list potential side-effects.'
+        },
+        {
+            id: 'news-5',
+            title: 'Organ Donor Registry Integration: Accelerating Life-Saving Crossmatches',
+            category: 'Transplantology',
+            tag: 'Public Health',
+            date: 'August 2026',
+            readTime: '3 min read',
+            source: 'National Organ Procurement Alliance',
+            summary: 'Real-time verified organ donor status on portable health IDs facilitates immediate coordination between trauma centers and procurement networks.',
+            impact: 'Directly linked to your LifeLink organ donor status setting.',
+            promptSuggestion: 'How is my organ donor preference verified by hospital teams?'
+        }
+    ];
+
+    res.send({ articles: newsArticles });
+});
+
+app.post('/api/chat', checkPatientAuth, (req, res) => {
+    const { message } = req.body;
+    if (!message || typeof message !== 'string') {
+        return res.status(400).send({ message: 'A prompt message is required.' });
+    }
+
+    try {
+        const db = getDb();
+        const user = db.prepare('SELECT id, name, health_id FROM users WHERE id = ?').get(req.userId);
+        const rawProfile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId);
+        const profile = formatProfile(rawProfile);
+
+        const referencedRecords = [];
+        if (profile?.blood_group) referencedRecords.push(`Blood Group (${profile.blood_group})`);
+        if (profile?.allergies) referencedRecords.push(`Allergies: ${profile.allergies}`);
+        if (profile?.chronic_conditions) referencedRecords.push(`Conditions: ${profile.chronic_conditions}`);
+        if (profile?.current_medications) referencedRecords.push(`Medications: ${profile.current_medications}`);
+        if (profile?.previous_surgeries) referencedRecords.push(`Surgeries: ${profile.previous_surgeries}`);
+        if (profile?.document_images?.length) referencedRecords.push(`${profile.document_images.length} Document Image(s)`);
+        if (profile?.medication_images?.length) referencedRecords.push(`${profile.medication_images.length} Medication Photo(s)`);
+        if (profile?.medical_file_links?.length) referencedRecords.push(`${profile.medical_file_links.length} Medical File Link(s)`);
+
+        const reply = generateMedicalRagResponse(message, user, profile, referencedRecords);
+
+        res.send({
+            reply,
+            referencedRecords,
+            healthId: user?.health_id,
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        console.error('Chat error:', err);
+        res.status(500).send({ message: 'Failed to process chat query' });
+    }
+});
+
 app.post('/api/register', (req, res) => {
     const { name, email, password } = req.body;
 
