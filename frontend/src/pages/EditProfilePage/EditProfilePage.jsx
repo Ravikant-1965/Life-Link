@@ -68,7 +68,7 @@ export function EditProfilePage({ user, token, logout }) {
     const navigate = useNavigate();
 
     if (!user || !token) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/" replace />;
     }
 
     const populateForm = (profile) => {
@@ -196,7 +196,7 @@ export function EditProfilePage({ user, token, logout }) {
         if (!navigator.onLine) {
             // Queue offline update for cloud sync when connection returns
             savePendingProfileUpdate(profileData);
-            setSuccess('⚡ Saved offline! Profile updated on this device and queued to sync with cloud once reconnected.');
+            setSuccess('Saved offline! Profile updated on this device and queued to sync with cloud once reconnected.');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setSaving(false);
             setTimeout(() => {
@@ -219,7 +219,7 @@ export function EditProfilePage({ user, token, logout }) {
         } catch (requestError) {
             // Fallback to offline queue if network drops mid-save
             savePendingProfileUpdate(profileData);
-            setSuccess('⚡ Saved offline! Server was unreachable, changes queued to sync automatically.');
+            setSuccess('Saved offline! Server was unreachable, changes queued to sync automatically.');
             window.scrollTo({ top: 0, behavior: 'smooth' });
             setTimeout(() => {
                 navigate('/dashboard');
@@ -247,7 +247,7 @@ export function EditProfilePage({ user, token, logout }) {
 
             <div className="edit-profile-content">
                 <div className="edit-profile-header">
-                    <h1>🩺 Your Health Profile</h1>
+                    <h1>Your Health Profile</h1>
                     <p>Keep your emergency profile current with health details, document photos, medicine images, and trusted record links.</p>
                 </div>
 
@@ -256,7 +256,7 @@ export function EditProfilePage({ user, token, logout }) {
 
                 <div className="profile-form">
                     <div className="form-section">
-                        <h2 className="section-title">👤 Personal Information</h2>
+                        <h2 className="section-title">Personal Information</h2>
 
                         <div className="form-row-2">
                             <div className="form-group">
@@ -297,7 +297,7 @@ export function EditProfilePage({ user, token, logout }) {
                     </div>
 
                     <div className="form-section">
-                        <h2 className="section-title">💊 Medical Information</h2>
+                        <h2 className="section-title">Medical Information</h2>
 
                         <div className="form-group">
                             <label>Google Drive / Cloud Report Links <span className="field-hint">(one per line)</span></label>
@@ -350,7 +350,7 @@ export function EditProfilePage({ user, token, logout }) {
                     </div>
 
                     <div className="form-section">
-                        <h2 className="section-title">📞 Emergency Contact</h2>
+                        <h2 className="section-title">Emergency Contact</h2>
                         <p className="section-description">Who should doctors call if you are unconscious or unable to speak?</p>
 
                         <div className="form-row-2">
@@ -367,7 +367,7 @@ export function EditProfilePage({ user, token, logout }) {
 
                     <div className="form-actions">
                         <button className="btn-primary save-btn" onClick={handleSave} disabled={saving}>
-                            {saving ? 'Saving...' : '💾 Save Health Profile'}
+                            {saving ? 'Saving...' : 'Save Health Profile'}
                         </button>
                         <Link to="/dashboard" className="btn-secondary cancel-btn">Cancel</Link>
                     </div>

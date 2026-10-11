@@ -66,7 +66,9 @@ export function NetworkStatusBanner({ onSync }) {
             {!isOnline && (
                 <div className="network-banner offline-banner" role="status" aria-live="polite">
                     <div className="banner-content">
-                        <span className="banner-icon">⚡</span>
+                        <span className="banner-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </span>
                         <div className="banner-text">
                             <strong>Offline Mode:</strong> No internet connection. Your emergency Health ID, QR code, and saved medical data are ready on device.
                         </div>
@@ -77,7 +79,9 @@ export function NetworkStatusBanner({ onSync }) {
             {showReconnected && isOnline && (
                 <div className="network-banner reconnected-banner" role="status" aria-live="polite">
                     <div className="banner-content">
-                        <span className="banner-icon">✓</span>
+                        <span className="banner-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        </span>
                         <div className="banner-text">
                             <strong>Back Online:</strong> Reconnected to Life Link cloud. Changes synchronized.
                         </div>
@@ -93,7 +97,7 @@ export function NetworkStatusBanner({ onSync }) {
                         Install App
                     </button>
                     <button onClick={() => setDeferredInstallPrompt(null)} className="pwa-dismiss-btn" aria-label="Dismiss">
-                        ✕
+                        &times;
                     </button>
                 </div>
             )}

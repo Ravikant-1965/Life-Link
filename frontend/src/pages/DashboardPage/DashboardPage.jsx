@@ -17,7 +17,7 @@ export function DashboardPage({ user, token, logout }) {
     // Navigation / auth check
     const navigate = useNavigate();
     if (!user || !token) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/" replace />;
     }
 
     // Active View Mode: 'chat' | 'news'
@@ -61,7 +61,7 @@ export function DashboardPage({ user, token, logout }) {
                 messages: [
                     {
                         role: 'assistant',
-                        content: `Hello **${user.name}**! I am your LifeLink AI Health Assistant.\n\nI am connected to your encrypted Health ID (**${user.healthId}**). I can answer questions about your recorded allergies, active medications, blood group, or explain newly uploaded reports and medical news. How can I assist you today?`,
+                        content: `Hello **${user.name}**! I am your Life-Link Health Assistant.\n\nI am connected to your encrypted Health ID (**${user.healthId}**). I can answer questions about your recorded allergies, active medications, blood group, or explain newly uploaded reports and medical news. How can I assist you today?`,
                         referencedRecords: ['Connected to Health ID: ' + user.healthId],
                         timestamp: new Date().toISOString()
                     }
@@ -342,16 +342,16 @@ export function DashboardPage({ user, token, logout }) {
                 {/* SIDEBAR HEADER */}
                 <div className="sidebar-header">
                     <div className="sidebar-brand">
-                        <img src="/logo_cross.png" alt="LifeLink" className="sidebar-logo-img" />
-                        <span className="sidebar-brand-name">LifeLink AI</span>
+                        <img src="/logo_cross.png" alt="Life-Link" className="sidebar-logo-img" />
+                        <span className="sidebar-brand-name">Life-Link</span>
                     </div>
                     <button
                         className="sidebar-collapse-toggle-btn"
                         onClick={toggleSidebar}
-                        title="Close sidebar (⌘+S)"
+                        title="Close sidebar"
                         aria-label="Toggle sidebar"
                     >
-                        ◀
+                        <span className="toggle-chevron">&lt;</span>
                     </button>
                 </div>
 
@@ -369,13 +369,13 @@ export function DashboardPage({ user, token, logout }) {
                         className={`sidebar-nav-tab ${activeSection === 'chat' ? 'active' : ''}`}
                         onClick={() => setActiveSection('chat')}
                     >
-                        💬 Medical Chat
+                        Medical Chat
                     </button>
                     <button
                         className={`sidebar-nav-tab ${activeSection === 'news' ? 'active' : ''}`}
                         onClick={() => setActiveSection('news')}
                     >
-                        📰 Health News
+                        Health News
                     </button>
                 </div>
 
@@ -392,7 +392,9 @@ export function DashboardPage({ user, token, logout }) {
                                     setActiveSection('chat');
                                 }}
                             >
-                                <span className="chat-item-icon">💬</span>
+                                <span className="chat-item-icon">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                </span>
                                 <span className="chat-item-title" title={chat.title}>
                                     {chat.title}
                                 </span>
@@ -401,7 +403,7 @@ export function DashboardPage({ user, token, logout }) {
                                     onClick={(e) => handleDeleteChat(chat.id, e)}
                                     title="Delete chat"
                                 >
-                                    🗑
+                                    <span className="del-cross-icon">&times;</span>
                                 </button>
                             </div>
                         ))}
@@ -413,18 +415,6 @@ export function DashboardPage({ user, token, logout }) {
                     Contains all required settings and separate 'Health Data' section
                 ========================================================================= */}
                 <div className="sidebar-footer-profile">
-                    {/* Quick Access Badges */}
-                    <div className="sidebar-quick-health-row">
-                        <button
-                            className="sidebar-health-data-pill-btn"
-                            onClick={() => setIsHealthDataOpen(true)}
-                            title="Open personal Health Data (PDFs, images, records)"
-                        >
-                            <span>📁 Health Data</span>
-                            <span className="health-badge-count">{totalFilesCount}</span>
-                        </button>
-                    </div>
-
                     {/* User Profile Card */}
                     <div
                         className="sidebar-user-card"
@@ -450,7 +440,7 @@ export function DashboardPage({ user, token, logout }) {
                                     setIsHealthDataOpen(true);
                                 }}
                             >
-                                📁 <span>Health Data & Records</span>
+                                <span>Health Data & Records</span>
                             </button>
                             <button
                                 className="popover-item"
@@ -459,14 +449,14 @@ export function DashboardPage({ user, token, logout }) {
                                     setIsSettingsOpen(true);
                                 }}
                             >
-                                ⚙️ <span>Account Settings</span>
+                                <span>Account Settings</span>
                             </button>
                             <Link
                                 to="/access-log"
                                 className="popover-item"
                                 onClick={() => setIsSidebarProfileMenuOpen(false)}
                             >
-                                📋 <span>Doctor Access Log</span>
+                                <span>Doctor Access Log</span>
                             </Link>
                             <div className="popover-divider" />
                             <button
@@ -476,7 +466,7 @@ export function DashboardPage({ user, token, logout }) {
                                     logout();
                                 }}
                             >
-                                🚪 <span>Logout</span>
+                                <span>Logout</span>
                             </button>
                         </div>
                     )}
@@ -498,14 +488,9 @@ export function DashboardPage({ user, token, logout }) {
                                 title="Expand sidebar"
                                 aria-label="Expand sidebar"
                             >
-                                ▶
+                                <span className="toggle-chevron">&gt;</span>
                             </button>
                         )}
-                        <div className="header-status-pill">
-                            <span className="status-indicator-dot" />
-                            <span className="header-model-name">LifeLink AI · RAG Vector Assistant</span>
-                            <span className="header-patient-id-tag">{user?.healthId}</span>
-                        </div>
                     </div>
 
                     {/* CENTER MODE SWITCHER: CHAT VS NEWS */}
@@ -515,33 +500,21 @@ export function DashboardPage({ user, token, logout }) {
                                 className={`pill-toggle-btn ${activeSection === 'chat' ? 'active' : ''}`}
                                 onClick={() => setActiveSection('chat')}
                             >
-                                💬 Chat
+                                Chat
                             </button>
                             <button
                                 className={`pill-toggle-btn ${activeSection === 'news' ? 'active' : ''}`}
                                 onClick={() => setActiveSection('news')}
                             >
-                                📰 News
+                                News
                             </button>
                         </div>
                     </div>
 
                     {/* =========================================================================
-                        REQUIREMENT 2 (Part B): TOP RIGHT OF CHAT SECTION
-                        Profile section with required settings and separate 'Health Data' section
+                        PROFILE SECTION (Access settings & Health Data privately)
                     ========================================================================= */}
                     <div className="top-header-right">
-                        {/* Dedicated Health Data Button */}
-                        <button
-                            className="top-health-data-btn"
-                            onClick={() => setIsHealthDataOpen(true)}
-                            title="Open personal Health Data (PDFs, prescription photos, scans)"
-                        >
-                            <span className="top-btn-icon">📁</span>
-                            <span className="top-btn-text">Health Data</span>
-                            <span className="top-health-count">{totalFilesCount}</span>
-                        </button>
-
                         {/* Top-Right Profile Section & Settings */}
                         <div className="top-profile-menu-wrap">
                             <button
@@ -569,23 +542,23 @@ export function DashboardPage({ user, token, logout }) {
                                         className="dropdown-link-btn"
                                         onClick={() => setIsHealthDataOpen(true)}
                                     >
-                                        📁 Health Data (PDFs & Photos)
+                                        Health Data (PDFs & Photos)
                                     </button>
                                     <button
                                         className="dropdown-link-btn"
                                         onClick={() => setIsSettingsOpen(true)}
                                     >
-                                        ⚙️ Account & Security Settings
+                                        Account & Security Settings
                                     </button>
                                     <Link to="/edit-profile" className="dropdown-link-btn">
-                                        ✏️ Edit Health Profile
+                                        Edit Health Profile
                                     </Link>
                                     <Link to="/access-log" className="dropdown-link-btn">
-                                        📋 Doctor Access Log
+                                        Doctor Access Log
                                     </Link>
                                     <div className="dropdown-divider" />
                                     <button className="dropdown-link-btn dropdown-logout-btn" onClick={logout}>
-                                        🚪 Logout
+                                        Logout
                                     </button>
                                 </div>
                             )}
@@ -603,9 +576,9 @@ export function DashboardPage({ user, token, logout }) {
                             {currentChat.messages.length === 0 ? (
                                 <div className="chat-empty-hero">
                                     <div className="empty-hero-icon-wrap">
-                                        <img src="/logo_cross.png" alt="LifeLink AI" className="hero-logo-img" />
+                                        <img src="/logo_cross.png" alt="Life-Link" className="hero-logo-img" />
                                     </div>
-                                    <h1 className="empty-hero-title">How can LifeLink AI assist with your health?</h1>
+                                    <h1 className="empty-hero-title">How can Life-Link assist with your health?</h1>
                                     <p className="empty-hero-subtitle">
                                         Grounded in your personal encrypted health profile, medications, and clinical records.
                                     </p>
@@ -616,7 +589,9 @@ export function DashboardPage({ user, token, logout }) {
                                             className="prompt-card"
                                             onClick={() => handlePromptSuggestionClick('Review my current medications and list potential interactions or side effects.')}
                                         >
-                                            <div className="prompt-card-icon">💊</div>
+                                            <div className="prompt-card-icon">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+                                            </div>
                                             <div className="prompt-card-title">Medication Review</div>
                                             <div className="prompt-card-desc">Check active prescriptions and dosages on file.</div>
                                         </div>
@@ -625,7 +600,9 @@ export function DashboardPage({ user, token, logout }) {
                                             className="prompt-card"
                                             onClick={() => handlePromptSuggestionClick('What are my documented allergies and recorded blood group in my emergency profile?')}
                                         >
-                                            <div className="prompt-card-icon">🩸</div>
+                                            <div className="prompt-card-icon">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                                            </div>
                                             <div className="prompt-card-title">Allergies & Blood Type</div>
                                             <div className="prompt-card-desc">Verify emergency alerts for hospital triage.</div>
                                         </div>
@@ -634,7 +611,9 @@ export function DashboardPage({ user, token, logout }) {
                                             className="prompt-card"
                                             onClick={() => handlePromptSuggestionClick('Summarize my complete emergency medical profile for first responders.')}
                                         >
-                                            <div className="prompt-card-icon">📋</div>
+                                            <div className="prompt-card-icon">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                                            </div>
                                             <div className="prompt-card-title">Emergency Summary</div>
                                             <div className="prompt-card-desc">Generate an instant doctor-ready brief.</div>
                                         </div>
@@ -643,7 +622,9 @@ export function DashboardPage({ user, token, logout }) {
                                             className="prompt-card"
                                             onClick={() => handlePromptSuggestionClick('Explain my uploaded medical files and document photos in plain language.')}
                                         >
-                                            <div className="prompt-card-icon">📑</div>
+                                            <div className="prompt-card-icon">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                            </div>
                                             <div className="prompt-card-title">Uploaded Scans & PDFs</div>
                                             <div className="prompt-card-desc">Query document scans and lab links.</div>
                                         </div>
@@ -667,11 +648,11 @@ export function DashboardPage({ user, token, logout }) {
                                             <div className="message-content-wrapper">
                                                 <div className="message-header-meta">
                                                     <span className="message-author-name">
-                                                        {msg.role === 'user' ? user.name : 'LifeLink AI'}
+                                                        {msg.role === 'user' ? user.name : 'Life-Link'}
                                                     </span>
                                                     {msg.referencedRecords && msg.referencedRecords.length > 0 && (
                                                         <span className="rag-grounded-pill">
-                                                            📌 RAG Vector Context ({msg.referencedRecords.length})
+                                                            RAG Vector Context ({msg.referencedRecords.length})
                                                         </span>
                                                     )}
                                                 </div>
@@ -733,13 +714,13 @@ export function DashboardPage({ user, token, logout }) {
                                     onClick={() => setIsHealthDataOpen(true)}
                                     title="Reference / view Health Data (PDFs, photos)"
                                 >
-                                    📎
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
                                 </button>
 
                                 <textarea
                                     ref={textareaRef}
                                     className="capsule-textarea"
-                                    placeholder="Ask LifeLink AI about your health, medications, allergies, or documents..."
+                                    placeholder="Ask Life-Link about your health, medications, allergies, or documents..."
                                     value={inputText}
                                     onChange={handleTextareaChange}
                                     onKeyDown={handleKeyDown}
@@ -758,7 +739,7 @@ export function DashboardPage({ user, token, logout }) {
                             </div>
 
                             <div className="chat-disclaimer-text">
-                                LifeLink Medical AI references your personal encrypted health records. Not a substitute for clinical emergency care.
+                                Life-Link references your personal encrypted health records. Not a substitute for clinical emergency care.
                             </div>
                         </div>
                     </div>
@@ -774,7 +755,7 @@ export function DashboardPage({ user, token, logout }) {
                                 <span className="news-kicker">Verified Clinical Updates</span>
                                 <h1 className="news-feed-title">Health News & Medical Advisories</h1>
                                 <p className="news-feed-desc">
-                                    Curated emergency guidance, health research, and clinical breakthroughs that you can discuss directly with your LifeLink AI.
+                                    Curated emergency guidance, health research, and clinical breakthroughs that you can discuss directly with Life-Link.
                                 </p>
                             </div>
 
@@ -830,7 +811,7 @@ export function DashboardPage({ user, token, logout }) {
                                                 className="news-discuss-ai-btn"
                                                 onClick={() => handleDiscussArticleInChat(art)}
                                             >
-                                                💬 Discuss with LifeLink AI
+                                                Discuss with Life-Link
                                             </button>
                                         </div>
                                     </article>
@@ -862,9 +843,11 @@ export function DashboardPage({ user, token, logout }) {
             <SettingsModal
                 isOpen={isSettingsOpen}
                 onClose={() => setIsSettingsOpen(false)}
+                onOpenHealthData={() => setIsHealthDataOpen(true)}
                 user={user}
                 isOfflineCard={isOfflineCard}
                 logout={logout}
+                totalFilesCount={totalFilesCount}
             />
         </div>
     );

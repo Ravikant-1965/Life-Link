@@ -470,7 +470,7 @@ function generateMedicalRagResponse(query, user, profile, referenced) {
         `Regarding your question: *"${query}"*\n\n` +
         `• **Patient Record Status**: Your profile has recorded Blood Group (**${blood}**), documented Allergies (**${allergies}**), and active Medications (**${meds}**).\n` +
         `• **Personalized Medical Advice**: Please ensure that any symptoms or medication changes are evaluated by a licensed medical provider. I can help analyze your stored medical PDFs, medication images, or explain health news articles.\n\n` +
-        `*Disclaimer: LifeLink AI is an intelligent medical record assistant and not a replacement for emergency diagnostic evaluation.*`;
+        `*Disclaimer: Life-Link is an intelligent medical record assistant and not a replacement for emergency diagnostic evaluation.*`;
 }
 
 app.get('/api/news', (_req, res) => {

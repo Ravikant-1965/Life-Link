@@ -41,7 +41,9 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                 {/* MODAL HEADER */}
                 <div className="health-modal-header">
                     <div className="health-modal-title-group">
-                        <div className="health-modal-icon">📁</div>
+                        <div className="health-modal-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        </div>
                         <div>
                             <h2>Personal Health Data & Medical Records</h2>
                             <p className="health-modal-subtitle">
@@ -51,10 +53,10 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                     </div>
                     <div className="health-modal-header-actions">
                         <Link to="/edit-profile" className="health-modal-edit-btn" onClick={onClose}>
-                            ✏️ Edit Records
+                            Edit Records
                         </Link>
                         <button className="health-modal-close-btn" onClick={onClose} aria-label="Close modal">
-                            ✕
+                            &times;
                         </button>
                     </div>
                 </div>
@@ -65,25 +67,25 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                         className={`health-tab-btn ${activeTab === 'clinical' ? 'active' : ''}`}
                         onClick={() => setActiveTab('clinical')}
                     >
-                        🩺 Clinical Summary
+                        Clinical Summary
                     </button>
                     <button
                         className={`health-tab-btn ${activeTab === 'documents' ? 'active' : ''}`}
                         onClick={() => setActiveTab('documents')}
                     >
-                        📄 Documents & PDFs ({documentImages.length + documentLinks.length})
+                        Documents & PDFs ({documentImages.length + documentLinks.length})
                     </button>
                     <button
                         className={`health-tab-btn ${activeTab === 'medications' ? 'active' : ''}`}
                         onClick={() => setActiveTab('medications')}
                     >
-                        💊 Medication Photos ({medicationImages.length})
+                        Medication Photos ({medicationImages.length})
                     </button>
                     <button
                         className={`health-tab-btn ${activeTab === 'qr' ? 'active' : ''}`}
                         onClick={() => setActiveTab('qr')}
                     >
-                        📱 Emergency QR Card
+                        Emergency QR Card
                     </button>
                 </div>
 
@@ -98,7 +100,7 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                                     <span className="banner-id-value">{user?.healthId}</span>
                                 </div>
                                 <button className="banner-copy-btn" onClick={handleCopyHealthId}>
-                                    {copiedHealthId ? '✓ Copied!' : '📋 Copy ID'}
+                                    {copiedHealthId ? 'Copied!' : 'Copy ID'}
                                 </button>
                             </div>
 
@@ -144,7 +146,7 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                                     <div className="stat-value">
                                         {profile?.emergency_contact_name ? (
                                             <span>
-                                                👤 <strong>{profile.emergency_contact_name}</strong> — 📞 {profile.emergency_contact_phone || 'No phone'}
+                                                <strong>{profile.emergency_contact_name}</strong> — Phone: {profile.emergency_contact_phone || 'No phone'}
                                             </span>
                                         ) : (
                                             'No emergency contact added yet.'
@@ -172,7 +174,9 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                                                 rel="noopener noreferrer"
                                                 className="health-link-row"
                                             >
-                                                <span className="link-icon">📑</span>
+                                                <span className="link-icon">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                                </span>
                                                 <span className="link-url">{link}</span>
                                                 <span className="link-badge">Open ↗</span>
                                             </a>
@@ -199,7 +203,7 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                                             >
                                                 <img src={img} alt={`Document ${idx + 1}`} className="health-gallery-thumb" />
                                                 <div className="gallery-card-overlay">
-                                                    <span>🔍 View Full</span>
+                                                    <span>View Full</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -232,7 +236,7 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                                             >
                                                 <img src={img} alt={`Medication ${idx + 1}`} className="health-gallery-thumb" />
                                                 <div className="gallery-card-overlay">
-                                                    <span>🔍 View Full</span>
+                                                    <span>View Full</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -286,7 +290,7 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                 {/* MODAL FOOTER */}
                 <div className="health-modal-footer">
                     <span className="health-encryption-tag">
-                        🔒 AES-256 Encrypted · Verified Doctor Authentication Required
+                        AES-256 Encrypted · Verified Doctor Authentication Required
                     </span>
                     <button className="health-modal-btn-done" onClick={onClose}>
                         Done
@@ -297,7 +301,7 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue })
                 {previewImage && (
                     <div className="image-lightbox-overlay" onClick={() => setPreviewImage(null)}>
                         <div className="image-lightbox-content" onClick={(e) => e.stopPropagation()}>
-                            <button className="lightbox-close" onClick={() => setPreviewImage(null)}>✕</button>
+                            <button className="lightbox-close" onClick={() => setPreviewImage(null)}>&times;</button>
                             <img src={previewImage} alt="Expanded Medical Record" className="lightbox-img" />
                         </div>
                     </div>

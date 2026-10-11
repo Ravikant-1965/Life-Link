@@ -77,7 +77,7 @@ export function MedicationsPage({ healthId }) {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>🩺 Doctor View: Patient Medications</h1>
+      <h1>Doctor View: Patient Medications</h1>
       
       <div style={{ backgroundColor: '#f0f4f8', padding: '15px', borderRadius: '8px' }}>
         <h3>Current Medications:</h3>
@@ -90,7 +90,7 @@ export function MedicationsPage({ healthId }) {
       {/* If we found any warnings, display them in a big red box! */}
       {warnings.length > 0 && (
         <div style={{ marginTop: '20px', backgroundColor: '#ffebe6', border: '2px solid red', padding: '15px', borderRadius: '8px' }}>
-          <h3 style={{ color: 'red', marginTop: 0 }}>⚠️ DRUG INTERACTION ALERTS</h3>
+          <h3 style={{ color: 'red', marginTop: 0 }}>DRUG INTERACTION ALERTS</h3>
           <ul>
             {warnings.map((alert, index) => (
               <li key={index} style={{ color: 'red', fontWeight: 'bold', marginBottom: '10px' }}>

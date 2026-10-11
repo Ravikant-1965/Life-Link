@@ -22,7 +22,7 @@ export function AccessLogPage({ user, token, logout }) {
 
   // Redirect if not logged in
   if (!user || !token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Fetch access logs from the backend when page loads
@@ -81,7 +81,10 @@ export function AccessLogPage({ user, token, logout }) {
 
       {/* ---- NAVBAR ---- */}
       <nav className="dashboard-nav">
-        <Link to="/" className="nav-logo-text">🏥 Life Link</Link>
+        <Link to="/" className="nav-logo-text">
+          <img src="/logo_cross.png" alt="Logo" style={{ width: '24px', height: '24px', verticalAlign: 'middle', marginRight: '6px' }} />
+          Life Link
+        </Link>
         <div className="nav-right">
           <Link to="/dashboard" className="nav-link">← Back to Dashboard</Link>
           <button onClick={logout} className="btn-secondary nav-logout-btn">Logout</button>
@@ -92,7 +95,7 @@ export function AccessLogPage({ user, token, logout }) {
 
         {/* ---- PAGE HEADER ---- */}
         <div className="access-log-header">
-          <h1>📋 Profile Access Log</h1>
+          <h1>Profile Access Log</h1>
           <p>
             Every verified doctor lookup for your Health ID <strong>({user.healthId})</strong> is recorded here with
             doctor identity details. This is your privacy audit trail.
@@ -120,7 +123,9 @@ export function AccessLogPage({ user, token, logout }) {
         {logs.length === 0 ? (
           /* Nobody has looked up this patient yet */
           <div className="no-logs-card">
-            <div className="no-logs-icon">🔒</div>
+            <div className="no-logs-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
             <h2>No accesses yet</h2>
             <p>
               Your profile has not been opened by a verified doctor yet.
@@ -156,7 +161,7 @@ export function AccessLogPage({ user, token, logout }) {
 
         {/* ---- PRIVACY NOTE ---- */}
         <div className="privacy-note">
-          <strong>🔒 Privacy Note:</strong> Access logs store the doctor identity and access time only.
+          <strong>Privacy Note:</strong> Access logs store the doctor identity and access time only.
           Your full medical profile data is never copied into the log.
           This log is only visible to you.
         </div>

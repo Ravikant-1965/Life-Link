@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
 import { LandingPage } from './pages/LandingPage/LandingPage';
@@ -29,6 +29,7 @@ function readStoredJson(key) {
 }
 
 function App() {
+    const navigate = useNavigate();
     const [user, setUser] = useState(() => readStoredJson('lifelink_user'));
     const [token, setToken] = useState(() => localStorage.getItem('lifelink_token'));
     const [doctor, setDoctor] = useState(() => readStoredJson('lifelink_doctor'));
@@ -46,6 +47,7 @@ function App() {
         setToken(null);
         localStorage.removeItem('lifelink_user');
         localStorage.removeItem('lifelink_token');
+        navigate('/', { replace: true });
     };
 
     const loginDoctor = (doctorData, tokenData) => {
@@ -60,6 +62,7 @@ function App() {
         setDoctorToken(null);
         localStorage.removeItem('lifelink_doctor');
         localStorage.removeItem('lifelink_doctor_token');
+        navigate('/', { replace: true });
     };
 
     return (
@@ -69,22 +72,57 @@ function App() {
                 <Route
                     path="/"
                     element={
-                    <LandingPage
-                        user={user}
-                        doctor={doctor}
-                        logout={logout}
-                        logoutDoctor={logoutDoctor}
-                    />
-                }
-            />
+                        user && token ? (
+                            <Navigate to="/dashboard" replace />
+                        ) : doctor && doctorToken ? (
+                            <Navigate to="/doctor/portal" replace />
+                        ) : (
+                            <LandingPage
+                                user={user}
+                                doctor={doctor}
+                                logout={logout}
+                                logoutDoctor={logoutDoctor}
+                            />
+                        )
+                    }
+                />
 
-            <Route path="register" element={<RegisterPage />} />
-            <Route path="login" element={<LoginPage login={login} loginDoctor={loginDoctor} />} />
-            <Route path="forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="reset-password" element={<ResetPasswordPage />} />
+                <Route
+                    path="register"
+                    element={
+                        user && token ? (
+                            <Navigate to="/dashboard" replace />
+                        ) : (
+                            <RegisterPage />
+                        )
+                    }
+                />
+                <Route
+                    path="login"
+                    element={
+                        user && token ? (
+                            <Navigate to="/dashboard" replace />
+                        ) : doctor && doctorToken ? (
+                            <Navigate to="/doctor/portal" replace />
+                        ) : (
+                            <LoginPage login={login} loginDoctor={loginDoctor} />
+                        )
+                    }
+                />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="reset-password" element={<ResetPasswordPage />} />
 
-            <Route path="doctor/register" element={<DoctorRegisterPage />} />
-            <Route path="doctor/login" element={<LoginPage login={login} loginDoctor={loginDoctor} />} />
+                <Route path="doctor/register" element={<DoctorRegisterPage />} />
+                <Route
+                    path="doctor/login"
+                    element={
+                        doctor && doctorToken ? (
+                            <Navigate to="/doctor/portal" replace />
+                        ) : (
+                            <LoginPage login={login} loginDoctor={loginDoctor} />
+                        )
+                    }
+                />
             <Route
                 path="doctor/portal"
                 element={
