@@ -220,9 +220,10 @@ function DoctorMfaModal({ doctorToken, doctor, onClose, onMfaStatusChange }) {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        🛡️ Doctor MFA Security
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Doctor MFA Security
                     </h2>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#a0aec0', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#a0aec0', fontSize: '24px', cursor: 'pointer', lineHeight: 1 }} aria-label="Close">&times;</button>
                 </div>
 
                 {error && <div className="error-message" style={{ marginBottom: '16px' }}>{error}</div>}
@@ -235,11 +236,13 @@ function DoctorMfaModal({ doctorToken, doctor, onClose, onMfaStatusChange }) {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '16px' }}>
                                 {mfaEnabled ? (
                                     <span style={{ color: '#48bb78', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        ● Enabled (Authenticator Active)
+                                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#48bb78', display: 'inline-block' }}></span>
+                                        Enabled (Authenticator Active)
                                     </span>
                                 ) : (
                                     <span style={{ color: '#e53e3e', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        ○ Not Enabled
+                                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid #e53e3e', display: 'inline-block' }}></span>
+                                        Not Enabled
                                     </span>
                                 )}
                             </div>
@@ -594,7 +597,7 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                     {error && <div className="error-message">{error}</div>}
                     {offlineNotice && (
                         <div className="offline-notice-banner">
-                            <span className="offline-badge-pill">⚡ Offline Mode</span>
+                            <span className="offline-badge-pill">Offline Mode</span>
                             <span className="offline-notice-text">{offlineNotice}</span>
                         </div>
                     )}
@@ -610,7 +613,7 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                             <div className="patient-header-status-group">
                                 {isOfflineSnapshot && (
                                     <div className="offline-tag-badge">
-                                        ⚡ Device Cached
+                                        Device Cached
                                     </div>
                                 )}
                                 <div className={`access-logged-badge ${isOfflineSnapshot ? 'offline-sync-pending' : ''}`}>

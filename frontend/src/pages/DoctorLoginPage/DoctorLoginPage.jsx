@@ -77,7 +77,7 @@ export function DoctorLoginPage({ loginDoctor }) {
                 <div className="auth-card">
                     <div className="auth-header">
                         <Link to="/" className="auth-logo">Life Link</Link>
-                        <h1>2-Step Verification 🔐</h1>
+                        <h1>2-Step Verification</h1>
                         <p>Enter the 6-digit verification code from your authenticator app (e.g. Google Authenticator or Authy).</p>
                     </div>
 
@@ -119,7 +119,7 @@ export function DoctorLoginPage({ loginDoctor }) {
                                 setError('');
                             }}
                         >
-                            ← Back to Doctor Login
+                            Back to Doctor Login
                         </button>
                     </div>
                 </div>

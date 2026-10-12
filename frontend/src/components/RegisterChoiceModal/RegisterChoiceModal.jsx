@@ -36,7 +36,9 @@ export function RegisterChoiceModal({ isOpen, onClose }) {
                             <h3>Create a doctor Profile</h3>
                             <p>For verified healthcare professionals & medical emergency responders.</p>
                         </div>
-                        <div className="choice-arrow-icon">→</div>
+                        <div className="choice-arrow-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </div>
                     </button>
 
                     <button
@@ -50,7 +52,9 @@ export function RegisterChoiceModal({ isOpen, onClose }) {
                             <h3>Create an user Profile</h3>
                             <p>For patients to manage emergency health IDs, records, and contact details.</p>
                         </div>
-                        <div className="choice-arrow-icon">→</div>
+                        <div className="choice-arrow-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </div>
                     </button>
                 </div>
             </div>

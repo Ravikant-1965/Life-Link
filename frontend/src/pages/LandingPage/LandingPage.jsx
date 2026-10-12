@@ -196,7 +196,9 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         </div>
                         {/* Stethoscope badge kept on the circular cut */}
                         <div className="floating-pill-badge badge-left-stethoscope" title="Verified Medical Access">
-                            <span className="stethoscope-icon-box">🩺</span>
+                            <span className="stethoscope-icon-box">
+                                <img src="/stethoscope_clean.png" alt="Stethoscope" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -287,8 +289,12 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                             <h2 className="testimonial-title">Views of our trusted users</h2>
                         </div>
                         <div className="testimonial-nav-arrows">
-                            <button className="arrow-btn" onClick={prevTestimonial} aria-label="Previous review">←</button>
-                            <button className="arrow-btn" onClick={nextTestimonial} aria-label="Next review">→</button>
+                            <button className="arrow-btn" onClick={prevTestimonial} aria-label="Previous review">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                            </button>
+                            <button className="arrow-btn" onClick={nextTestimonial} aria-label="Next review">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                            </button>
                         </div>
                     </div>
 
@@ -304,7 +310,11 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         <div className="testimonial-quote-card">
                             <div className="star-rating">
                                 {[...Array(5)].map((_, i) => (
-                                    <span key={i} className={i < testimonials[currentReviewIndex].rating ? "star-filled" : "star-empty"}>★</span>
+                                    <span key={i} className={i < testimonials[currentReviewIndex].rating ? "star-filled" : "star-empty"}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                        </svg>
+                                    </span>
                                 ))}
                             </div>
 
@@ -336,7 +346,11 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                             <div key={index} className={`faq-item ${openFaq === index ? 'faq-open' : ''}`}>
                                 <button className="faq-question" onClick={() => setOpenFaq(openFaq === index ? null : index)}>
                                     <span>{faq.question}</span>
-                                    <span className="faq-toggle-icon">{openFaq === index ? '▲' : '▼'}</span>
+                                    <span className="faq-toggle-icon">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: openFaq === index ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </span>
                                 </button>
                                 {openFaq === index && (
                                     <div className="faq-answer">
@@ -368,8 +382,17 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
 
                     <div className="footer-contact-col">
                         <div className="social-icons-group">
-                            <a href="mailto:ravikantm128@gmail.com" className="social-badge-icon" aria-label="Email Us">✉</a>
-                            <a href="https://x.com/Raja_G_1965" target="_blank" rel="noreferrer" className="social-badge-icon" aria-label="X Profile">𝕏</a>
+                            <a href="mailto:ravikantm128@gmail.com" className="social-badge-icon" aria-label="Email Us">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </a>
+                            <a href="https://x.com/Raja_G_1965" target="_blank" rel="noreferrer" className="social-badge-icon" aria-label="X Profile">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                </svg>
+                            </a>
                         </div>
                     </div>
 
@@ -386,9 +409,12 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                 </div>
 
                 <div className="footer-bottom-bar">
-                    <p className="footer-copyright">© 2026 Life Link Healthcare. All rights reserved.</p>
+                    <p className="footer-copyright">&copy; 2026 Life Link Healthcare. All rights reserved.</p>
                     <button onClick={scrollToTop} className="scroll-top-btn">
-                        Scroll Top <span className="scroll-arrow">^</span>
+                        Scroll Top 
+                        <span className="scroll-arrow" style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                        </span>
                     </button>
                 </div>
             </footer>

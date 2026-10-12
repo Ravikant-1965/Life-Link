@@ -349,7 +349,9 @@ export function AccessLogPage({ user, token, logout }) {
                             >
                                 <div className="dept-tile-header">
                                     <span className="dept-tile-label">{dept}</span>
-                                    <span className="dept-tile-arrow">↗</span>
+                                    <span className="dept-tile-arrow">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+                                    </span>
                                 </div>
                                 <div className="dept-tile-count">~{count} Access{count === 1 ? '' : 'es'}</div>
                                 <div className="dept-tile-sub">Clinical audit confirmed</div>
@@ -406,7 +408,10 @@ export function AccessLogPage({ user, token, logout }) {
                                     }}
                                 />
                                 <div className="detail-rating-badge">
-                                    <span>★ 4.9 Verified Specialist</span>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }}>
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                    <span>4.9 Verified Specialist</span>
                                 </div>
                             </div>
 

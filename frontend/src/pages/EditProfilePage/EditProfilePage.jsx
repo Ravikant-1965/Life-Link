@@ -241,7 +241,7 @@ export function EditProfilePage({ user, token, logout }) {
                     <span>Life Link</span>
                 </Link>
                 <div className="nav-right">
-                    <Link to="/dashboard" className="nav-link">← Back to Dashboard</Link>
+                    <Link to="/dashboard" className="nav-link">Back to Dashboard</Link>
                 </div>
             </nav>
 

@@ -125,7 +125,7 @@ export function LoginPage({ login, loginDoctor }) {
                             <img src="/logo_cross.png" alt="Life Link Logo" className="auth-logo-img" />
                             <span>Life Link</span>
                         </Link>
-                        <h1>2-Step Verification 🔐</h1>
+                        <h1>2-Step Verification</h1>
                         <p>Enter the 6-digit verification code from your authenticator app.</p>
                     </div>
 
@@ -168,7 +168,7 @@ export function LoginPage({ login, loginDoctor }) {
                                 setError('');
                             }}
                         >
-                            ← Back to LogIn
+                            Back to LogIn
                         </button>
                     </div>
                 </div>
