@@ -7,6 +7,7 @@ import {
     queueOfflineAuditLog,
     syncPendingAuditLogs
 } from '../../utils/offlineStorage';
+import { DoctorProfileModal } from './DoctorProfileModal';
 import './EmergencyPage.css';
 
 function DoctorAccessGuard({ healthId }) {
@@ -305,6 +306,7 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
     const [error, setError] = useState('');
     const [timeLeft, setTimeLeft] = useState(0);
     const [showMfaModal, setShowMfaModal] = useState(false);
+    const [showProfileModal, setShowProfileModal] = useState(false);
     const [doctorInfo, setDoctorInfo] = useState(doctor);
     const [isOfflineSnapshot, setIsOfflineSnapshot] = useState(false);
     const [offlineNotice, setOfflineNotice] = useState('');
@@ -508,11 +510,32 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                                 transition: 'all 0.2s ease'
                             }}
                         >
-                            🛡️ {doctorInfo?.mfaEnabled ? 'MFA Enabled' : 'MFA Setup'}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            {doctorInfo?.mfaEnabled ? 'MFA Enabled' : 'MFA Setup'}
+                        </button>
+                        <button
+                            onClick={() => setShowProfileModal(true)}
+                            style={{
+                                background: 'rgba(1, 138, 190, 0.12)',
+                                border: '1px solid rgba(1, 138, 190, 0.4)',
+                                color: '#018ABE',
+                                padding: '6px 14px',
+                                borderRadius: '20px',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            Practice Details
                         </button>
                         <div className="doctor-chip">
                             <span>{doctorInfo?.name || doctor.name}</span>
-                            <span className="doctor-chip-meta">{(doctorInfo || doctor).specialization} · {(doctorInfo || doctor).hospital}</span>
+                            <span className="doctor-chip-meta">{(doctorInfo || doctor).department || (doctorInfo || doctor).specialization} · {(doctorInfo || doctor).hospital}</span>
                         </div>
                     </div>
                 </div>
@@ -525,6 +548,18 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                     onClose={() => setShowMfaModal(false)}
                     onMfaStatusChange={(newStatus) => {
                         setDoctorInfo((prev) => ({ ...prev, mfaEnabled: newStatus }));
+                    }}
+                />
+            )}
+
+            {showProfileModal && (
+                <DoctorProfileModal
+                    isOpen={showProfileModal}
+                    doctorToken={doctorToken}
+                    doctor={doctorInfo || doctor}
+                    onClose={() => setShowProfileModal(false)}
+                    onDoctorUpdated={(updated) => {
+                        setDoctorInfo(updated);
                     }}
                 />
             )}

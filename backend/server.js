@@ -108,6 +108,188 @@ app.use((req, res, next) => {
 });
 
 initDatabase();
+seedDoctorProfilesAndLogs(getDb());
+
+function seedDoctorProfilesAndLogs(db) {
+    try {
+        const defaultPasswordHash = bcrypt.hashSync('Doctor@123', 10);
+        const now = Date.now();
+
+        const fakeDoctors = [
+            {
+                name: 'Dr. Sarah Johnson',
+                email: 'dr.sarah.johnson@metrohealth.org',
+                password_hash: defaultPasswordHash,
+                license_number: 'MED-CARD-782104',
+                hospital: 'Metro Heart Super Specialty Hospital',
+                specialization: 'Cardiovascular Disease & Heart Failure',
+                department: 'Cardiology',
+                qualifications: 'MBBS, MD (Medicine), DM (Cardiology), FACC',
+                experience_years: '8 Years',
+                phone: '+1 (555) 382-9102',
+                avatar_url: '/doctors/dr_sarah_johnson.jpg',
+                bio: 'Senior Consultant Cardiologist specializing in acute coronary triage, cardiac electrophysiology, and non-invasive cardiovascular imaging.',
+                reason: 'Emergency Cardiac Rhythm Evaluation & ECG Review',
+                timeOffset: 2 * 60 * 60 * 1000 // 2 hours ago
+            },
+            {
+                name: 'Dr. Ching Ming Yu',
+                email: 'dr.chingming.yu@apexortho.com',
+                password_hash: defaultPasswordHash,
+                license_number: 'MED-ORTH-491022',
+                hospital: 'Apex Orthopedic & Trauma Institute',
+                specialization: 'Musculoskeletal Trauma & Joint Reconstruction',
+                department: 'Orthopedics',
+                qualifications: 'MBBS, MS (Orthopedics), M.Ch (Ortho)',
+                experience_years: '12 Years',
+                phone: '+1 (555) 749-1084',
+                avatar_url: '/doctors/dr_ching_ming_yu.jpg',
+                bio: 'Chief of Orthopedic Trauma specializing in complex fracture reduction, bone biomechanics, and post-traumatic joint stabilization.',
+                reason: 'Post-Fracture Bone Radiograph & Musculoskeletal Review',
+                timeOffset: 24 * 60 * 60 * 1000 // 1 day ago
+            },
+            {
+                name: 'Dr. Elena Rostova',
+                email: 'dr.elena.rostova@stjudeneuro.org',
+                password_hash: defaultPasswordHash,
+                license_number: 'MED-NEUR-630291',
+                hospital: 'St. Jude Neurosciences Centre',
+                specialization: 'Stroke Prevention & Cognitive Neurology',
+                department: 'Neurology',
+                qualifications: 'MBBS, MD, DM (Neurology)',
+                experience_years: '10 Years',
+                phone: '+1 (555) 492-7815',
+                avatar_url: '/doctors/dr_elena_rostova.jpg',
+                bio: 'Consultant Neurologist managing emergency acute stroke protocol, neurocritical assessments, and neuromuscular disorders.',
+                reason: 'Cranial Nerve Reflex & Neuro-motor Assessment',
+                timeOffset: 4 * 24 * 60 * 60 * 1000 // 4 days ago
+            },
+            {
+                name: 'Dr. Rajesh Sharma',
+                email: 'dr.rajesh.sharma@apollocare.org',
+                password_hash: defaultPasswordHash,
+                license_number: 'MED-EMER-551098',
+                hospital: 'Apollo Critical Care & Trauma Hospital',
+                specialization: 'Acute Trauma Life Support & Critical Care',
+                department: 'Emergency Medicine',
+                qualifications: 'MBBS, MD (Emergency Medicine), FEM (RCGP-UK)',
+                experience_years: '15 Years',
+                phone: '+91 98901 33456',
+                avatar_url: '/doctors/dr_rajesh_sharma.jpg',
+                bio: 'Director of Emergency Services focusing on rapid trauma triage, hemodynamic stabilization, and critical record verification.',
+                reason: 'Comprehensive Emergency Triage & Allergy Verification',
+                timeOffset: 7 * 24 * 60 * 60 * 1000 // 7 days ago
+            }
+        ];
+
+        const targetPatientHealthIds = ['LL-2KZAM', 'LL-KQGSX'];
+
+        for (const doc of fakeDoctors) {
+            let existingDoc = db.prepare('SELECT id FROM doctors WHERE email = ? OR license_number = ?').get(doc.email, doc.license_number);
+            let doctorId;
+
+            if (!existingDoc) {
+                const res = db.prepare(`
+                    INSERT INTO doctors (
+                        name, email, password_hash, license_number, hospital,
+                        specialization, department, qualifications, experience_years,
+                        phone, avatar_url, bio, verification_status, verified_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified', datetime('now'))
+                `).run(
+                    doc.name, doc.email, doc.password_hash, doc.license_number, doc.hospital,
+                    doc.specialization, doc.department, doc.qualifications, doc.experience_years,
+                    doc.phone, doc.avatar_url, doc.bio
+                );
+                doctorId = Number(res.lastInsertRowid);
+            } else {
+                doctorId = existingDoc.id;
+                db.prepare(`
+                    UPDATE doctors
+                    SET
+                        name = ?,
+                        hospital = ?,
+                        specialization = ?,
+                        department = ?,
+                        qualifications = ?,
+                        experience_years = ?,
+                        phone = ?,
+                        avatar_url = ?,
+                        bio = ?,
+                        verification_status = 'verified'
+                    WHERE id = ?
+                `).run(
+                    doc.name, doc.hospital, doc.specialization, doc.department,
+                    doc.qualifications, doc.experience_years, doc.phone,
+                    doc.avatar_url, doc.bio, doctorId
+                );
+            }
+
+            for (const healthId of targetPatientHealthIds) {
+                const existingLog = db.prepare(`
+                    SELECT id FROM access_logs
+                    WHERE health_id = ? AND doctor_license = ?
+                `).get(healthId, doc.license_number);
+
+                const accessedAt = new Date(now - doc.timeOffset).toISOString();
+
+                if (!existingLog) {
+                    db.prepare(`
+                        INSERT INTO access_logs (
+                            health_id, doctor_id, doctor_name, doctor_email, doctor_license,
+                            department, hospital, specialization, qualifications, experience_years,
+                            phone, avatar_url, access_reason, accessed_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(
+                        healthId, doctorId, doc.name, doc.email, doc.license_number,
+                        doc.department, doc.hospital, doc.specialization, doc.qualifications,
+                        doc.experience_years, doc.phone, doc.avatar_url, doc.reason, accessedAt
+                    );
+                } else {
+                    db.prepare(`
+                        UPDATE access_logs
+                        SET
+                            doctor_id = ?,
+                            doctor_name = ?,
+                            doctor_email = ?,
+                            department = ?,
+                            hospital = ?,
+                            specialization = ?,
+                            qualifications = ?,
+                            experience_years = ?,
+                            phone = ?,
+                            avatar_url = ?,
+                            access_reason = ?
+                        WHERE id = ?
+                    `).run(
+                        doctorId, doc.name, doc.email, doc.department, doc.hospital,
+                        doc.specialization, doc.qualifications, doc.experience_years,
+                        doc.phone, doc.avatar_url, doc.reason, existingLog.id
+                    );
+                }
+            }
+        }
+        // Ensure medical profile exists for user 1 (Ravi kant) so doctors can lookup his record
+        const user1 = db.prepare('SELECT id, name FROM users WHERE id = 1').get();
+        if (user1) {
+            const p1 = db.prepare('SELECT id FROM profiles WHERE user_id = 1').get();
+            if (!p1) {
+                db.prepare(`
+                    INSERT INTO profiles (
+                        user_id, full_name, blood_group, date_of_birth, age, gender,
+                        allergies, chronic_conditions, emergency_contact_name, emergency_contact_phone
+                    ) VALUES (1, 'Ravi kant', 'O+', '1998-05-14', 28, 'Male', 'Penicillin', 'Mild Asthma', 'Emergency Contact', '+91 98765 43210')
+                `).run();
+            }
+        }
+
+        // Backfill department for legacy doctors if blank
+        db.prepare("UPDATE doctors SET department = specialization WHERE (department = '' OR department IS NULL) AND specialization != ''").run();
+
+        console.log('Seeded 4 fake doctor profiles & access logs for Ravi kant and Ravi Mishra successfully.');
+    } catch (err) {
+        console.error('Error seeding doctor profiles:', err.message);
+    }
+}
 
 function generateHealthId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -269,7 +451,7 @@ function checkDoctorAuth(req, res, next) {
 
         const db = getDb();
         const doctor = db.prepare(`
-            SELECT id, name, email, license_number, hospital, specialization, verification_status, mfa_enabled
+            SELECT *
             FROM doctors
             WHERE id = ?
         `).get(decoded.id);
@@ -334,14 +516,24 @@ function fetchEmergencyProfile(healthId, doctor) {
     if (doctor) {
         db.prepare(`
             INSERT INTO access_logs (
-                health_id, doctor_id, doctor_name, doctor_email, doctor_license, accessed_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                health_id, doctor_id, doctor_name, doctor_email, doctor_license,
+                department, hospital, specialization, qualifications, experience_years,
+                phone, avatar_url, access_reason, accessed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             normalizedHealthId,
             doctor.id,
             doctor.name,
             doctor.email,
             doctor.license_number,
+            doctor.department || doctor.specialization || 'Cardiology',
+            doctor.hospital || 'Hospital',
+            doctor.specialization || doctor.department || 'Specialist',
+            doctor.qualifications || 'MBBS, MD',
+            doctor.experience_years || '8 Years',
+            doctor.phone || '+91 98000 00000',
+            doctor.avatar_url || '/doctors/dr_sarah_johnson.jpg',
+            'Emergency Clinical Lookup & Health Record Audit',
             new Date().toISOString()
         );
     }
@@ -729,6 +921,12 @@ app.post('/api/doctors/register', (req, res) => {
         licenseNumber,
         hospital,
         specialization,
+        department,
+        qualifications,
+        experienceYears,
+        phone,
+        avatarUrl,
+        bio,
         verificationCode
     } = req.body;
 
@@ -762,8 +960,10 @@ app.post('/api/doctors/register', (req, res) => {
 
     db.prepare(`
         INSERT INTO doctors (
-            name, email, password_hash, license_number, hospital, specialization, verification_status, verified_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            name, email, password_hash, license_number, hospital, specialization,
+            department, qualifications, experience_years, phone, avatar_url, bio,
+            verification_status, verified_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         name.trim(),
         safeEmail,
@@ -771,6 +971,12 @@ app.post('/api/doctors/register', (req, res) => {
         safeLicense,
         hospital.trim(),
         specialization.trim(),
+        (department || specialization || '').trim(),
+        (qualifications || 'MBBS, MD').trim(),
+        (experienceYears || '5 Years').trim(),
+        (phone || '').trim(),
+        (avatarUrl || '/doctor_consultation.jpg').trim(),
+        (bio || '').trim(),
         isVerified ? 'verified' : 'pending',
         isVerified ? new Date().toISOString() : null
     );
@@ -987,8 +1193,73 @@ app.get('/api/doctors/me', checkDoctorAuth, (req, res) => {
             licenseNumber: req.doctor.license_number,
             hospital: req.doctor.hospital,
             specialization: req.doctor.specialization,
+            department: req.doctor.department,
+            qualifications: req.doctor.qualifications,
+            experienceYears: req.doctor.experience_years,
+            phone: req.doctor.phone,
+            avatarUrl: req.doctor.avatar_url,
+            bio: req.doctor.bio,
             verificationStatus: req.doctor.verification_status,
             mfaEnabled: Boolean(req.doctor.mfa_enabled)
+        }
+    });
+});
+
+app.put('/api/doctors/profile', checkDoctorAuth, (req, res) => {
+    const {
+        hospital,
+        specialization,
+        department,
+        qualifications,
+        experienceYears,
+        phone,
+        avatarUrl,
+        bio
+    } = req.body;
+
+    const db = getDb();
+    db.prepare(`
+        UPDATE doctors
+        SET
+            hospital = COALESCE(?, hospital),
+            specialization = COALESCE(?, specialization),
+            department = COALESCE(?, department),
+            qualifications = COALESCE(?, qualifications),
+            experience_years = COALESCE(?, experience_years),
+            phone = COALESCE(?, phone),
+            avatar_url = COALESCE(?, avatar_url),
+            bio = COALESCE(?, bio)
+        WHERE id = ?
+    `).run(
+        hospital !== undefined ? hospital.trim() : null,
+        specialization !== undefined ? specialization.trim() : null,
+        department !== undefined ? department.trim() : null,
+        qualifications !== undefined ? qualifications.trim() : null,
+        experienceYears !== undefined ? experienceYears.trim() : null,
+        phone !== undefined ? phone.trim() : null,
+        avatarUrl !== undefined ? avatarUrl.trim() : null,
+        bio !== undefined ? bio.trim() : null,
+        req.doctor.id
+    );
+
+    const updated = db.prepare('SELECT * FROM doctors WHERE id = ?').get(req.doctor.id);
+    res.send({
+        message: 'Doctor profile updated successfully.',
+        doctor: {
+            id: updated.id,
+            name: updated.name,
+            email: updated.email,
+            licenseNumber: updated.license_number,
+            hospital: updated.hospital,
+            specialization: updated.specialization,
+            department: updated.department,
+            qualifications: updated.qualifications,
+            experienceYears: updated.experience_years,
+            phone: updated.phone,
+            avatarUrl: updated.avatar_url,
+            bio: updated.bio,
+            verificationStatus: updated.verification_status,
+            mfaEnabled: Boolean(updated.mfa_enabled)
         }
     });
 });
@@ -1201,17 +1472,27 @@ app.post('/api/doctor/patient/:healthId/access', checkDoctorAuth, (req, res) => 
         return res.status(404).send({ message: 'Patient has no medical profile set up.' });
     }
 
-    // Insert access log
+    // Insert access log with full doctor profile snapshot
     db.prepare(`
         INSERT INTO access_logs (
-            health_id, doctor_id, doctor_name, doctor_email, doctor_license, accessed_at
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            health_id, doctor_id, doctor_name, doctor_email, doctor_license,
+            department, hospital, specialization, qualifications, experience_years,
+            phone, avatar_url, access_reason, accessed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         normalizedHealthId,
         doctor.id,
         doctor.name,
         doctor.email,
         doctor.license_number,
+        doctor.department || doctor.specialization || 'Cardiology',
+        doctor.hospital || 'Medical Center',
+        doctor.specialization || doctor.department || 'Specialist',
+        doctor.qualifications || 'MBBS, MD',
+        doctor.experience_years || '8 Years',
+        doctor.phone || '+91 98000 00000',
+        doctor.avatar_url || '/doctors/dr_sarah_johnson.jpg',
+        'Direct Doctor Session Access & Clinical Audit',
         new Date().toISOString()
     );
 
@@ -1275,10 +1556,27 @@ app.get('/api/access-log', checkPatientAuth, (req, res) => {
     }
 
     const logs = db.prepare(`
-        SELECT id, health_id, doctor_id, doctor_name, doctor_email, doctor_license, accessed_at
-        FROM access_logs
-        WHERE health_id = ?
-        ORDER BY accessed_at DESC
+        SELECT
+            l.id,
+            l.health_id,
+            l.doctor_id,
+            COALESCE(d.name, l.doctor_name, 'Verified Doctor') AS doctor_name,
+            COALESCE(d.email, l.doctor_email, 'doctor@lifelink.org') AS doctor_email,
+            COALESCE(d.license_number, l.doctor_license, 'MCI-VERIFIED') AS doctor_license,
+            COALESCE(d.hospital, l.hospital, 'General Hospital') AS hospital,
+            COALESCE(d.department, l.department, d.specialization, l.specialization, 'General Medicine') AS department,
+            COALESCE(d.specialization, l.specialization, d.department, 'Specialist') AS specialization,
+            COALESCE(d.qualifications, l.qualifications, 'MBBS, MD') AS qualifications,
+            COALESCE(d.experience_years, l.experience_years, '8 Years') AS experience_years,
+            COALESCE(d.phone, l.phone, '+1 (555) 000-0000') AS phone,
+            COALESCE(d.avatar_url, l.avatar_url, '/doctor_consultation.jpg') AS avatar_url,
+            COALESCE(d.bio, 'Certified medical professional practicing under approved medical council standards.') AS bio,
+            COALESCE(l.access_reason, 'Emergency clinical records lookup & review') AS access_reason,
+            l.accessed_at
+        FROM access_logs l
+        LEFT JOIN doctors d ON l.doctor_id = d.id
+        WHERE l.health_id = ?
+        ORDER BY l.accessed_at DESC
     `).all(user.health_id);
 
     res.send(logs);

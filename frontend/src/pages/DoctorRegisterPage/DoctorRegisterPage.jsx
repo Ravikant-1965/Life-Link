@@ -11,6 +11,10 @@ export function DoctorRegisterPage() {
         licenseNumber: '',
         hospital: '',
         specialization: '',
+        department: 'Cardiology',
+        qualifications: '',
+        experienceYears: '',
+        phone: '',
         verificationCode: ''
     });
     const [loading, setLoading] = useState(false);
@@ -94,8 +98,42 @@ export function DoctorRegisterPage() {
                     </div>
 
                     <div className="form-group">
-                        <label>Specialization</label>
-                        <input className="form-input" value={formData.specialization} onChange={(event) => updateField('specialization', event.target.value)} />
+                        <label>Department</label>
+                        <select
+                            className="form-input"
+                            value={formData.department}
+                            onChange={(event) => updateField('department', event.target.value)}
+                        >
+                            <option value="Cardiology">Cardiology</option>
+                            <option value="Orthopedics">Orthopedics</option>
+                            <option value="Neurology">Neurology</option>
+                            <option value="Emergency Medicine">Emergency Medicine</option>
+                            <option value="General Medicine">General Medicine</option>
+                            <option value="Pediatrics">Pediatrics</option>
+                            <option value="General Surgery">General Surgery</option>
+                            <option value="Dermatology">Dermatology</option>
+                            <option value="Oncology">Oncology</option>
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Specialization / Clinical Focus</label>
+                        <input className="form-input" placeholder="e.g. Musculoskeletal Trauma, Interventional Cardiology" value={formData.specialization} onChange={(event) => updateField('specialization', event.target.value)} />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Medical Qualifications</label>
+                        <input className="form-input" placeholder="e.g. MBBS, MD, MS (Ortho), FACC" value={formData.qualifications} onChange={(event) => updateField('qualifications', event.target.value)} />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Years of Clinical Experience</label>
+                        <input className="form-input" placeholder="e.g. 8 Years" value={formData.experienceYears} onChange={(event) => updateField('experienceYears', event.target.value)} />
+                    </div>
+
+                    <div className="form-group">
+                        <label>Practice Contact Phone</label>
+                        <input className="form-input" placeholder="e.g. +1 (555) 382-9102" value={formData.phone} onChange={(event) => updateField('phone', event.target.value)} />
                     </div>
 
                     <div className="form-group">

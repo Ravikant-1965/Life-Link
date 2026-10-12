@@ -134,10 +134,24 @@ function initDatabase() {
     ensureColumn('doctors', 'verified_at', 'TEXT');
     ensureColumn('doctors', 'mfa_secret', 'TEXT');
     ensureColumn('doctors', 'mfa_enabled', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumn('doctors', 'department', "TEXT NOT NULL DEFAULT ''");
+    ensureColumn('doctors', 'qualifications', "TEXT NOT NULL DEFAULT ''");
+    ensureColumn('doctors', 'experience_years', "TEXT NOT NULL DEFAULT ''");
+    ensureColumn('doctors', 'phone', "TEXT NOT NULL DEFAULT ''");
+    ensureColumn('doctors', 'avatar_url', "TEXT NOT NULL DEFAULT ''");
+    ensureColumn('doctors', 'bio', "TEXT NOT NULL DEFAULT ''");
     ensureColumn('access_logs', 'doctor_id', 'INTEGER');
     ensureColumn('access_logs', 'doctor_name', 'TEXT');
     ensureColumn('access_logs', 'doctor_email', 'TEXT');
     ensureColumn('access_logs', 'doctor_license', 'TEXT');
+    ensureColumn('access_logs', 'department', 'TEXT');
+    ensureColumn('access_logs', 'hospital', 'TEXT');
+    ensureColumn('access_logs', 'specialization', 'TEXT');
+    ensureColumn('access_logs', 'qualifications', 'TEXT');
+    ensureColumn('access_logs', 'experience_years', 'TEXT');
+    ensureColumn('access_logs', 'phone', 'TEXT');
+    ensureColumn('access_logs', 'avatar_url', 'TEXT');
+    ensureColumn('access_logs', 'access_reason', 'TEXT');
 
     console.log('All database tables are ready!');
 }
