@@ -20,6 +20,12 @@ const {
     bucketName
 } = require('./r2Storage');
 
+const {
+    cleanMedicalText,
+    extractTextFromBuffer,
+    loadAndExtractDocument
+} = require('./ragLoader');
+
 const documentUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
@@ -780,7 +786,7 @@ app.get('/api/news', (_req, res) => {
     res.send({ articles: newsArticles });
 });
 
-app.post('/api/chat', checkPatientAuth, (req, res) => {
+app.post('/api/chat', checkPatientAuth, async (req, res) => {
     const { message } = req.body;
     if (!message || typeof message !== 'string') {
         return res.status(400).send({ message: 'A prompt message is required.' });
@@ -802,10 +808,43 @@ app.post('/api/chat', checkPatientAuth, (req, res) => {
         if (profile?.medication_images?.length) referencedRecords.push(`${profile.medication_images.length} Medication Photo(s)`);
         if (profile?.medical_file_links?.length) referencedRecords.push(`${profile.medical_file_links.length} Medical File Link(s)`);
 
-        const reply = generateMedicalRagResponse(message, user, profile, referencedRecords);
+        let reply = '';
+        let sources = [];
+        let engine = 'fallback-local';
+
+        // Connect to LifeLink Python RAG microservice (FastAPI + ChromaDB)
+        try {
+            const pythonRes = await fetch('http://127.0.0.1:8000/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: message,
+                    health_id: user?.health_id,
+                    patient_name: user?.name || 'Patient',
+                    patient_profile: profile,
+                    top_k: 4
+                }),
+                signal: AbortSignal.timeout(6000)
+            });
+
+            if (pythonRes.ok) {
+                const pyData = await pythonRes.json();
+                reply = pyData.answer || '';
+                sources = pyData.sources || [];
+                engine = pyData.engine || 'python-chroma-rag';
+            }
+        } catch (_pyErr) {
+            // Python service offline or timeout; gracefully fall back
+        }
+
+        if (!reply) {
+            reply = generateMedicalRagResponse(message, user, profile, referencedRecords);
+        }
 
         res.send({
             reply,
+            sources,
+            engine,
             referencedRecords,
             healthId: user?.health_id,
             timestamp: new Date().toISOString()
@@ -854,10 +893,24 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
                 }
             });
 
-            // Insert metadata record into patient_documents table
+            // Stage 1 RAG: Ingest and extract clean medical text in-memory
+            let extractedText = '';
+            let pageCount = 1;
+            let ragStatus = 'parsed';
+
+            try {
+                const parsed = await extractTextFromBuffer(req.file.buffer, req.file.mimetype, rawFileName);
+                extractedText = parsed.fullText || '';
+                pageCount = parsed.totalPages || 1;
+            } catch (parseErr) {
+                console.warn('[RAG Loader Warning]: Could not parse text for', rawFileName, parseErr.message);
+                ragStatus = 'failed';
+            }
+
+            // Insert metadata and extracted text into patient_documents table
             const stmt = db.prepare(`
-                INSERT INTO patient_documents (user_id, health_id, file_name, file_key, file_size, mime_type, category)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO patient_documents (user_id, health_id, file_name, file_key, file_size, mime_type, category, extracted_text, page_count, rag_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
             const info = stmt.run(
                 user.id,
@@ -866,14 +919,41 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
                 fileKey,
                 req.file.size,
                 req.file.mimetype,
-                category
+                category,
+                extractedText,
+                pageCount,
+                ragStatus
             );
 
             const insertedDoc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(info.lastInsertRowid);
 
+            // Automatically index text into Python ChromaDB vector store if available
+            if (extractedText) {
+                fetch('http://127.0.0.1:8000/documents/index-text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        document_id: insertedDoc.id,
+                        health_id: user.health_id,
+                        file_name: rawFileName,
+                        category: category,
+                        text: extractedText
+                    }),
+                    signal: AbortSignal.timeout(10000)
+                }).then(async (r) => {
+                    if (r.ok) {
+                        try {
+                            getDb().prepare('UPDATE patient_documents SET rag_status = ? WHERE id = ?').run('indexed', insertedDoc.id);
+                        } catch (_dbE) {}
+                    }
+                }).catch(() => {
+                    // Python service offline; text remains safely saved in SQLite
+                });
+            }
+
             return res.status(201).send({
                 success: true,
-                message: 'Document successfully uploaded to Cloudflare R2 cloud storage.',
+                message: 'Document successfully uploaded to Cloudflare R2 and parsed for RAG search.',
                 document: {
                     ...insertedDoc,
                     formatted_size: formatBytes(insertedDoc.file_size)
@@ -891,7 +971,7 @@ app.get('/api/documents', checkPatientAuth, (req, res) => {
     try {
         const db = getDb();
         const docs = db.prepare(`
-            SELECT id, user_id, health_id, file_name, file_size, mime_type, category, uploaded_at
+            SELECT id, user_id, health_id, file_name, file_size, mime_type, category, uploaded_at, page_count, rag_status
             FROM patient_documents
             WHERE user_id = ?
             ORDER BY id DESC
@@ -1022,6 +1102,17 @@ app.delete('/api/documents/:id', checkPatientAuth, async (req, res) => {
 
         // Delete from SQLite database
         db.prepare('DELETE FROM patient_documents WHERE id = ?').run(doc.id);
+
+        // Delete from Python ChromaDB vector store if service is running
+        fetch('http://127.0.0.1:8000/documents/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                document_id: doc.id,
+                health_id: doc.health_id
+            }),
+            signal: AbortSignal.timeout(4000)
+        }).catch(() => {});
 
         res.send({ success: true, message: 'Document permanently removed from cloud storage.' });
     } catch (error) {

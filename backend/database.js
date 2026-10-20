@@ -167,6 +167,9 @@ function initDatabase() {
     ensureColumn('access_logs', 'phone', 'TEXT');
     ensureColumn('access_logs', 'avatar_url', 'TEXT');
     ensureColumn('access_logs', 'access_reason', 'TEXT');
+    ensureColumn('patient_documents', 'extracted_text', 'TEXT');
+    ensureColumn('patient_documents', 'page_count', 'INTEGER DEFAULT 1');
+    ensureColumn('patient_documents', 'rag_status', "TEXT DEFAULT 'pending'");
 
     console.log('All database tables are ready!');
 }

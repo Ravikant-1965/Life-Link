@@ -262,6 +262,8 @@ export function DashboardPage({ user, token, logout }) {
                 role: 'assistant',
                 content: res.data.reply,
                 referencedRecords: res.data.referencedRecords || [],
+                sources: res.data.sources || [],
+                engine: res.data.engine || 'local',
                 timestamp: res.data.timestamp || new Date().toISOString()
             };
 
@@ -711,6 +713,24 @@ export function DashboardPage({ user, token, logout }) {
                                                         <div className="sources-tags">
                                                             {msg.referencedRecords.map((ref, rIdx) => (
                                                                 <span key={rIdx} className="source-tag">{ref}</span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Document Citations from Python RAG / ChromaDB */}
+                                                {msg.sources && msg.sources.length > 0 && (
+                                                    <div className="message-sources-box rag-sources-box">
+                                                        <span className="sources-label">Cited Documents & Report Pages:</span>
+                                                        <div className="sources-tags">
+                                                            {msg.sources.map((src, sIdx) => (
+                                                                <span key={sIdx} className="source-tag rag-doc-source-tag" title={src.excerpt}>
+                                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                                        <polyline points="14 2 14 8 20 8"/>
+                                                                    </svg>
+                                                                    {src.file_name} (Page {src.page_number})
+                                                                </span>
                                                             ))}
                                                         </div>
                                                     </div>

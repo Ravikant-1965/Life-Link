@@ -546,6 +546,17 @@ export function HealthDataModal({ isOpen, onClose, profile, user, qrCodeValue, t
                                                                 {doc.category || 'General'}
                                                             </span>
                                                             <span className="r2-doc-size">{doc.formatted_size || 'Unknown size'}</span>
+                                                            {doc.page_count && doc.page_count > 1 && (
+                                                                <span className="r2-doc-pages">{doc.page_count} Pages</span>
+                                                            )}
+                                                            {doc.rag_status === 'parsed' && (
+                                                                <span className="r2-doc-rag-badge" title="Medical text indexed for AI Assistant RAG queries">
+                                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <polyline points="20 6 9 17 4 12"/>
+                                                                    </svg>
+                                                                    AI Ready
+                                                                </span>
+                                                            )}
                                                             {doc.uploaded_at && (
                                                                 <span className="r2-doc-date">
                                                                     {new Date(doc.uploaded_at).toLocaleDateString(undefined, {
