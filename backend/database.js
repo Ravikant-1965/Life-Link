@@ -120,6 +120,21 @@ function initDatabase() {
         )
     `);
 
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS patient_documents (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id          INTEGER NOT NULL,
+            health_id        TEXT NOT NULL,
+            file_name        TEXT NOT NULL,
+            file_key         TEXT NOT NULL,
+            file_size        INTEGER NOT NULL,
+            mime_type        TEXT NOT NULL,
+            category         TEXT DEFAULT 'General',
+            uploaded_at      TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    `);
+
     const existingVisitors = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
     if (!existingVisitors) {
         db.prepare('INSERT INTO site_stats (key, value) VALUES (?, ?)').run('total_visitors', 1428);

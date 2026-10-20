@@ -481,6 +481,41 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
         setLoading(false);
     };
 
+    const handleDoctorViewDoc = async (docId) => {
+        try {
+            const res = await api.get(`/api/documents/${docId}/view`, {
+                headers: { Authorization: `Bearer ${doctorToken}` }
+            });
+            if (res.data?.viewUrl) {
+                window.open(res.data.viewUrl, '_blank', 'noopener,noreferrer');
+            } else {
+                alert('Unable to generate preview link for this document.');
+            }
+        } catch (err) {
+            alert('Failed to preview document: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
+    const handleDoctorDownloadDoc = async (docId, fileName) => {
+        try {
+            const res = await api.get(`/api/documents/${docId}/download`, {
+                headers: { Authorization: `Bearer ${doctorToken}` }
+            });
+            if (res.data?.downloadUrl) {
+                const link = document.createElement('a');
+                link.href = res.data.downloadUrl;
+                link.setAttribute('download', fileName || 'medical_document');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('Unable to generate download link for this document.');
+            }
+        } catch (err) {
+            alert('Failed to download document: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
     if (!doctor || !doctorToken) {
         return <DoctorAccessGuard healthId={healthId || idFromUrl} />;
     }
@@ -676,6 +711,51 @@ export function EmergencyPage({ doctor, doctorToken, logoutDoctor }) {
                                     </div>
                                 </div>
                             </div>
+
+                            {patientData.documents && patientData.documents.length > 0 && (
+                                <div className="details-section">
+                                    <h2 className="details-section-title">Verified Cloud Medical Documents ({patientData.documents.length})</h2>
+                                    <div className="emergency-docs-grid">
+                                        {patientData.documents.map((doc) => (
+                                            <div key={doc.id} className="emergency-doc-card">
+                                                <div className="emergency-doc-left">
+                                                    <div className="emergency-doc-icon">
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                                            <polyline points="14 2 14 8 20 8"/>
+                                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                                        </svg>
+                                                    </div>
+                                                    <div>
+                                                        <div className="emergency-doc-name">{doc.file_name}</div>
+                                                        <div className="emergency-doc-meta">
+                                                            <span className="emergency-doc-cat">{doc.category || 'Clinical Record'}</span>
+                                                            <span className="emergency-doc-size">{doc.formatted_size}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="emergency-doc-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="emergency-btn-view"
+                                                        onClick={() => handleDoctorViewDoc(doc.id)}
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="emergency-btn-download"
+                                                        onClick={() => handleDoctorDownloadDoc(doc.id, doc.file_name)}
+                                                    >
+                                                        Download
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {renderImageGallery('Medical Document Photos', patientData.profile.document_images, 'document-gallery')}
                             {renderImageGallery('Medication Photos', patientData.profile.medication_images, 'medication-gallery')}

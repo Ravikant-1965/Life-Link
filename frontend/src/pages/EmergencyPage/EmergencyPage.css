@@ -487,3 +487,114 @@
     align-items: flex-start;
   }
 }
+
+/* EMERGENCY CLOUD DOCUMENTS */
+.emergency-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.emergency-doc-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.18s ease;
+}
+
+.emergency-doc-card:hover {
+  border-color: #018ABE;
+  box-shadow: 0 4px 14px rgba(1, 138, 190, 0.08);
+}
+
+.emergency-doc-left {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.emergency-doc-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.emergency-doc-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  word-break: break-all;
+  margin-bottom: 4px;
+}
+
+.emergency-doc-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.emergency-doc-cat {
+  background-color: #e2e8f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.emergency-doc-size {
+  font-weight: 600;
+}
+
+.emergency-doc-actions {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #edf2f7;
+  padding-top: 10px;
+}
+
+.emergency-btn-view,
+.emergency-btn-download {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.16s ease;
+}
+
+.emergency-btn-view {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+}
+
+.emergency-btn-view:hover {
+  background-color: #dbeafe;
+}
+
+.emergency-btn-download {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.emergency-btn-download:hover {
+  background-color: #dcfce7;
+}
+

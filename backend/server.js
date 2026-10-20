@@ -10,6 +10,37 @@ const { generateSecret, generateURI, verifySync } = require('otplib');
 const QRCode = require('qrcode');
 const { initDatabase, getDb } = require('./database');
 const { encryptText, decryptText } = require('./cryptoUtils');
+const multer = require('multer');
+const {
+    uploadToR2,
+    getPresignedDownloadUrl,
+    getPresignedViewUrl,
+    deleteFromR2,
+    formatBytes,
+    bucketName
+} = require('./r2Storage');
+
+const documentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 25 * 1024 * 1024 // 25 MB max limit
+    },
+    fileFilter: (_req, file, cb) => {
+        const allowedMimes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif'
+        ];
+        if (allowedMimes.includes(file.mimetype) || file.originalname.match(/\.(pdf|jpe?g|png|webp|heic|heif)$/i)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only PDF documents and medical images (JPG, PNG, WEBP) are supported.'));
+        }
+    }
+});
 
 if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
     cloudinary.config({
@@ -538,6 +569,22 @@ function fetchEmergencyProfile(healthId, doctor) {
         );
     }
 
+    let documents = [];
+    try {
+        const rawDocs = db.prepare(`
+            SELECT id, health_id, file_name, file_size, mime_type, category, uploaded_at
+            FROM patient_documents
+            WHERE health_id = ?
+            ORDER BY id DESC
+        `).all(normalizedHealthId);
+        documents = rawDocs.map(d => ({
+            ...d,
+            formatted_size: formatBytes(d.file_size)
+        }));
+    } catch (_e) {
+        documents = [];
+    }
+
     return {
         status: 200,
         body: {
@@ -550,6 +597,7 @@ function fetchEmergencyProfile(healthId, doctor) {
             },
             medicalData: profile,
             profile,
+            documents,
             accessedBy: doctor ? {
                 name: doctor.name,
                 email: doctor.email,
@@ -765,6 +813,255 @@ app.post('/api/chat', checkPatientAuth, (req, res) => {
     } catch (err) {
         console.error('Chat error:', err);
         res.status(500).send({ message: 'Failed to process chat query' });
+    }
+});
+
+// ==============================================================================
+// CLOUDFLARE R2 MEDICAL DOCUMENT STORAGE ROUTES
+// ==============================================================================
+
+// 1. Upload Document to Cloudflare R2 (Patient Auth)
+app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
+    documentUpload.single('file')(req, res, async (err) => {
+        if (err) {
+            return res.status(400).send({ message: err.message || 'Error processing uploaded file.' });
+        }
+
+        if (!req.file) {
+            return res.status(400).send({ message: 'No file was uploaded.' });
+        }
+
+        try {
+            const db = getDb();
+            const user = db.prepare('SELECT id, health_id, name FROM users WHERE id = ?').get(req.userId);
+            if (!user) {
+                return res.status(404).send({ message: 'User not found.' });
+            }
+
+            const rawFileName = req.file.originalname || 'medical_document.pdf';
+            const cleanFileName = rawFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const fileKey = `patients/${user.health_id}/${Date.now()}_${cleanFileName}`;
+            const category = req.body.category || 'General';
+
+            // Upload directly to Cloudflare R2
+            await uploadToR2({
+                buffer: req.file.buffer,
+                key: fileKey,
+                contentType: req.file.mimetype,
+                metadata: {
+                    healthId: user.health_id,
+                    originalName: cleanFileName
+                }
+            });
+
+            // Insert metadata record into patient_documents table
+            const stmt = db.prepare(`
+                INSERT INTO patient_documents (user_id, health_id, file_name, file_key, file_size, mime_type, category)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `);
+            const info = stmt.run(
+                user.id,
+                user.health_id,
+                rawFileName,
+                fileKey,
+                req.file.size,
+                req.file.mimetype,
+                category
+            );
+
+            const insertedDoc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(info.lastInsertRowid);
+
+            return res.status(201).send({
+                success: true,
+                message: 'Document successfully uploaded to Cloudflare R2 cloud storage.',
+                document: {
+                    ...insertedDoc,
+                    formatted_size: formatBytes(insertedDoc.file_size)
+                }
+            });
+        } catch (error) {
+            console.error('[R2 Upload Error]:', error);
+            return res.status(500).send({ message: 'Failed to upload document to cloud storage: ' + error.message });
+        }
+    });
+});
+
+// 2. List Documents for Current Patient (Patient Auth)
+app.get('/api/documents', checkPatientAuth, (req, res) => {
+    try {
+        const db = getDb();
+        const docs = db.prepare(`
+            SELECT id, user_id, health_id, file_name, file_size, mime_type, category, uploaded_at
+            FROM patient_documents
+            WHERE user_id = ?
+            ORDER BY id DESC
+        `).all(req.userId);
+
+        const formattedDocs = docs.map((d) => ({
+            ...d,
+            formatted_size: formatBytes(d.file_size)
+        }));
+
+        res.send({ documents: formattedDocs });
+    } catch (error) {
+        console.error('[R2 List Error]:', error);
+        res.status(500).send({ message: 'Failed to fetch documents.' });
+    }
+});
+
+// 3. Download Document (Secure Presigned URL with Attachment Header)
+app.get('/api/documents/:id/download', async (req, res) => {
+    try {
+        const token = getTokenFromRequest(req);
+        if (!token) {
+            return res.status(401).send({ message: 'Authentication required to download medical records.' });
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const db = getDb();
+        const doc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(req.params.id);
+
+        if (!doc) {
+            return res.status(404).send({ message: 'Document not found.' });
+        }
+
+        // Verify authorization: patient owns document OR verified doctor with active session
+        if (decoded.role === 'patient') {
+            if (doc.user_id !== decoded.id) {
+                return res.status(403).send({ message: 'Unauthorized to access this patient document.' });
+            }
+        } else if (decoded.role === 'doctor') {
+            const activeSession = db.prepare(`
+                SELECT * FROM doctor_patient_sessions
+                WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
+            `).get(decoded.id, doc.health_id, Date.now());
+
+            if (!activeSession) {
+                return res.status(403).send({ message: 'Active emergency access session required or session expired.' });
+            }
+        } else {
+            return res.status(403).send({ message: 'Invalid role.' });
+        }
+
+        // Generate 15-minute secure Presigned Download URL
+        const downloadUrl = await getPresignedDownloadUrl(doc.file_key, doc.file_name, 900);
+        res.send({
+            downloadUrl,
+            fileName: doc.file_name,
+            mimeType: doc.mime_type
+        });
+    } catch (error) {
+        console.error('[R2 Download Error]:', error);
+        res.status(500).send({ message: 'Failed to generate download URL: ' + error.message });
+    }
+});
+
+// 4. View / Preview Document Inline (Secure Presigned URL)
+app.get('/api/documents/:id/view', async (req, res) => {
+    try {
+        const token = getTokenFromRequest(req);
+        if (!token) {
+            return res.status(401).send({ message: 'Authentication required to view medical records.' });
+        }
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const db = getDb();
+        const doc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(req.params.id);
+
+        if (!doc) {
+            return res.status(404).send({ message: 'Document not found.' });
+        }
+
+        // Verify authorization
+        if (decoded.role === 'patient') {
+            if (doc.user_id !== decoded.id) {
+                return res.status(403).send({ message: 'Unauthorized to access this document.' });
+            }
+        } else if (decoded.role === 'doctor') {
+            const activeSession = db.prepare(`
+                SELECT * FROM doctor_patient_sessions
+                WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
+            `).get(decoded.id, doc.health_id, Date.now());
+
+            if (!activeSession) {
+                return res.status(403).send({ message: 'Active doctor emergency session required.' });
+            }
+        } else {
+            return res.status(403).send({ message: 'Invalid role.' });
+        }
+
+        // Generate 15-minute secure Presigned Inline Preview URL
+        const viewUrl = await getPresignedViewUrl(doc.file_key, doc.file_name, 900);
+        res.send({
+            viewUrl,
+            fileName: doc.file_name,
+            mimeType: doc.mime_type
+        });
+    } catch (error) {
+        console.error('[R2 View Error]:', error);
+        res.status(500).send({ message: 'Failed to generate preview URL: ' + error.message });
+    }
+});
+
+// 5. Delete Document (Patient Auth)
+app.delete('/api/documents/:id', checkPatientAuth, async (req, res) => {
+    try {
+        const db = getDb();
+        const doc = db.prepare('SELECT * FROM patient_documents WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+
+        if (!doc) {
+            return res.status(404).send({ message: 'Document not found or unauthorized.' });
+        }
+
+        // Delete from Cloudflare R2 bucket
+        try {
+            await deleteFromR2(doc.file_key);
+        } catch (r2Err) {
+            console.warn('[R2 Delete Warning]:', r2Err.message);
+        }
+
+        // Delete from SQLite database
+        db.prepare('DELETE FROM patient_documents WHERE id = ?').run(doc.id);
+
+        res.send({ success: true, message: 'Document permanently removed from cloud storage.' });
+    } catch (error) {
+        console.error('[R2 Delete Error]:', error);
+        res.status(500).send({ message: 'Failed to delete document: ' + error.message });
+    }
+});
+
+// 6. Doctor fetch documents for a patient during active session (Doctor Auth)
+app.get(['/api/doctor/patient/:healthId/documents', '/api/doctor/patient/:id/documents'], checkDoctorAuth, (req, res) => {
+    try {
+        const db = getDb();
+        const patientHealthId = (req.params.healthId || req.params.id || '').toUpperCase();
+
+        // Verify active doctor session for this health_id
+        const activeSession = db.prepare(`
+            SELECT * FROM doctor_patient_sessions
+            WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
+        `).get(req.doctor.id, patientHealthId, Date.now());
+
+        if (!activeSession) {
+            return res.status(403).send({ message: 'Active clinical session required to access patient documents.' });
+        }
+
+        const docs = db.prepare(`
+            SELECT id, health_id, file_name, file_size, mime_type, category, uploaded_at
+            FROM patient_documents
+            WHERE health_id = ?
+            ORDER BY id DESC
+        `).all(patientHealthId);
+
+        const formattedDocs = docs.map((d) => ({
+            ...d,
+            formatted_size: formatBytes(d.file_size)
+        }));
+
+        res.send({ documents: formattedDocs });
+    } catch (error) {
+        console.error('[Doctor Fetch Documents Error]:', error);
+        res.status(500).send({ message: 'Failed to fetch patient documents.' });
     }
 });
 

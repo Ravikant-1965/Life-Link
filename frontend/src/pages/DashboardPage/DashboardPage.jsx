@@ -334,11 +334,13 @@ export function DashboardPage({ user, token, logout }) {
     const categoriesList = ['All', 'Emergency Medicine', 'Health Tech', 'Cardiology', 'Pharmacology', 'Transplantology'];
 
     return (
-        <div className={`gpt-workspace ${isSidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed'}`}>
+        <div className={`gpt-workspace ${activeSection === 'news' ? 'news-mode' : (isSidebarOpen ? 'sidebar-expanded' : 'sidebar-collapsed')}`}>
             {/* =========================================================================
                 1) EXTENDABLE & MINIMIZABLE GPT-STYLE SIDEBAR
+                (Only appears when the user is on the chat section)
             ========================================================================= */}
-            <aside className="gpt-sidebar">
+            {activeSection === 'chat' && (
+                <aside className="gpt-sidebar" aria-label="Sidebar">
                 {/* SIDEBAR HEADER */}
                 <div className="sidebar-header">
                     <div className="sidebar-brand">
@@ -478,6 +480,7 @@ export function DashboardPage({ user, token, logout }) {
                     )}
                 </div>
             </aside>
+            )}
 
             {/* =========================================================================
                 MAIN VIEW (Chat Area OR News Area)
@@ -486,16 +489,27 @@ export function DashboardPage({ user, token, logout }) {
                 {/* TOP HEADER OF CHAT SECTION */}
                 <header className="gpt-top-header">
                     <div className="top-header-left">
-                        {/* Sidebar expand button when sidebar is collapsed */}
-                        {!isSidebarOpen && (
-                            <button
-                                className="sidebar-expand-toggle-btn"
-                                onClick={toggleSidebar}
-                                title="Expand sidebar"
-                                aria-label="Expand sidebar"
+                        {activeSection === 'news' ? (
+                            <div
+                                className="header-brand-news"
+                                onClick={() => setActiveSection('chat')}
+                                title="Return to Chat"
                             >
-                                <span className="toggle-chevron">&gt;</span>
-                            </button>
+                                <img src="/logo_cross.png" alt="Life-Link" className="header-logo-img" />
+                                <span className="header-brand-name">Life-Link</span>
+                            </div>
+                        ) : (
+                            !isSidebarOpen && (
+                                <button
+                                    type="button"
+                                    className="sidebar-expand-toggle-btn"
+                                    onClick={toggleSidebar}
+                                    title="Expand sidebar"
+                                    aria-label="Expand sidebar"
+                                >
+                                    <span className="toggle-chevron">&gt;</span>
+                                </button>
+                            )
                         )}
                     </div>
 
@@ -503,14 +517,24 @@ export function DashboardPage({ user, token, logout }) {
                     <div className="top-header-center">
                         <div className="section-pill-toggle">
                             <button
+                                type="button"
                                 className={`pill-toggle-btn ${activeSection === 'chat' ? 'active' : ''}`}
-                                onClick={() => setActiveSection('chat')}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setActiveSection('chat');
+                                }}
                             >
                                 Chat
                             </button>
                             <button
+                                type="button"
                                 className={`pill-toggle-btn ${activeSection === 'news' ? 'active' : ''}`}
-                                onClick={() => setActiveSection('news')}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setActiveSection('news');
+                                }}
                             >
                                 News
                             </button>
@@ -848,6 +872,7 @@ export function DashboardPage({ user, token, logout }) {
                 profile={profile}
                 user={user}
                 qrCodeValue={qrCodeValue}
+                token={token}
             />
 
             {/* =========================================================================
