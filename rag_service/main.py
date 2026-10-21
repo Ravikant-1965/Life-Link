@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from config import HOST, PORT
 from document_loader import extract_text_from_bytes, clean_medical_text
-from text_splitter import split_document_pages
+from text_splitter import split_document_pages, split_raw_text, get_chunk_summary
 from vector_store import vector_store
 from rag_engine import generate_rag_answer
 
@@ -32,6 +32,15 @@ class TextIndexRequest(BaseModel):
     category: str = "General"
     text: str
 
+class SplitPreviewRequest(BaseModel):
+    text: str
+    document_id: int = 1
+    health_id: str = "LL-DEMO"
+    file_name: str = "sample.txt"
+    category: str = "General"
+    chunk_size: Optional[int] = None
+    chunk_overlap: Optional[int] = None
+
 class DeleteDocumentRequest(BaseModel):
     document_id: int
     health_id: str
@@ -41,6 +50,7 @@ class QueryRequest(BaseModel):
     health_id: str
     top_k: int = 4
     category: Optional[str] = None
+    min_similarity: Optional[float] = 0.0
 
 class ChatRequest(BaseModel):
     query: str
@@ -56,6 +66,16 @@ def health_check():
         "status": "healthy",
         "service": "LifeLink Python RAG Engine",
         "stats": stats
+    }
+
+@app.get("/stats")
+def get_vector_stats():
+    """
+    Stage 3: Returns detailed ChromaDB collection statistics.
+    """
+    return {
+        "success": True,
+        "stats": vector_store.get_stats()
     }
 
 @app.post("/documents/index-file")
@@ -123,6 +143,33 @@ def index_document_text(req: TextIndexRequest):
         "total_chunks": indexed_count
     }
 
+@app.post("/documents/preview-chunks")
+def preview_chunks(req: SplitPreviewRequest):
+    """
+    Stage 2 Preview Endpoint: Splits text and returns chunk structures and summary metrics without persisting to ChromaDB.
+    """
+    cleaned = clean_medical_text(req.text)
+    kwargs = {}
+    if req.chunk_size:
+        kwargs["chunk_size"] = req.chunk_size
+    if req.chunk_overlap:
+        kwargs["chunk_overlap"] = req.chunk_overlap
+
+    chunks = split_raw_text(
+        raw_text=cleaned,
+        document_id=req.document_id,
+        health_id=req.health_id,
+        file_name=req.file_name,
+        category=req.category,
+        **kwargs
+    )
+    summary = get_chunk_summary(chunks)
+    return {
+        "success": True,
+        "summary": summary,
+        "chunks": chunks
+    }
+
 @app.post("/documents/delete")
 def delete_document(req: DeleteDocumentRequest):
     """
@@ -145,7 +192,8 @@ def query_chunks(req: QueryRequest):
         query=req.query,
         health_id=req.health_id,
         top_k=req.top_k,
-        category=req.category
+        category=req.category,
+        min_similarity=req.min_similarity or 0.0
     )
     return {
         "query": req.query,
