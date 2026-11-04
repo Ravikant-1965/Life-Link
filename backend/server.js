@@ -824,7 +824,7 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
                     patient_profile: profile,
                     top_k: 4
                 }),
-                signal: AbortSignal.timeout(6000)
+                signal: AbortSignal.timeout(15000)
             });
 
             if (pythonRes.ok) {

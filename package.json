@@ -1,0 +1,13 @@
+{
+  "name": "life-link",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Life Link - Emergency Health Identity Platform with RAG Medical Assistant",
+  "scripts": {
+    "start": "bash start.sh",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm run dev",
+    "rag": "cd rag_service && bash start_rag_service.sh"
+  }
+}
+

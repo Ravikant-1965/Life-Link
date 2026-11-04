@@ -13,4 +13,4 @@ if [ ! -d "venv" ]; then
 fi
 
 echo "Starting LifeLink Python RAG Microservice on http://127.0.0.1:8000..."
-exec ./venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+exec ./venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --reload

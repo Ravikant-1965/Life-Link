@@ -58,6 +58,26 @@ class ChatRequest(BaseModel):
     patient_name: str = "Patient"
     patient_profile: Optional[Dict[str, Any]] = None
     top_k: int = 4
+    category: Optional[str] = None
+    min_similarity: Optional[float] = 0.0
+
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "service": "LifeLink Python RAG Medical Service",
+        "version": "1.0.0",
+        "documentation": "/docs",
+        "endpoints": {
+            "health": "/health",
+            "stats": "/stats",
+            "docs": "/docs",
+            "chat": "POST /chat",
+            "index_file": "POST /documents/index-file",
+            "index_text": "POST /documents/index-text",
+            "query": "POST /query"
+        }
+    }
 
 @app.get("/health")
 def health_check():
@@ -210,7 +230,9 @@ async def chat_rag(req: ChatRequest):
     chunks = vector_store.search_chunks(
         query=req.query,
         health_id=req.health_id,
-        top_k=req.top_k
+        top_k=req.top_k,
+        category=req.category,
+        min_similarity=req.min_similarity or 0.0
     )
 
     response = await generate_rag_answer(
