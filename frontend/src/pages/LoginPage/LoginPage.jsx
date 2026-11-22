@@ -168,7 +168,7 @@ export function LoginPage({ login, loginDoctor }) {
                                 setError('');
                             }}
                         >
-                            Back to LogIn
+                            Back to Login
                         </button>
                     </div>
                 </div>
@@ -184,7 +184,7 @@ export function LoginPage({ login, loginDoctor }) {
                         <img src="/logo_cross.png" alt="Life Link Logo" className="auth-logo-img" />
                         <span>Life Link</span>
                     </Link>
-                    <h1>LogIn</h1>
+                    <h1>Login</h1>
                     <p>Enter your credentials to log in to your account</p>
                 </div>
 
@@ -250,7 +250,7 @@ export function LoginPage({ login, loginDoctor }) {
                         onClick={handleLogin}
                         disabled={loading}
                     >
-                        {loading ? 'Logging in...' : 'LogIn'}
+                        {loading ? 'Logging in...' : 'Login'}
                     </button>
 
                     <div style={{ textAlign: 'center', marginTop: '6px' }}>
@@ -266,23 +266,16 @@ export function LoginPage({ login, loginDoctor }) {
                 </div>
 
                 <div className="auth-footer">
-                    Don't have an account?{' '}
-                    <button
-                        type="button"
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#018ABE',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            padding: 0,
-                            font: 'inherit',
-                            textDecoration: 'underline'
-                        }}
-                        onClick={() => setIsChoiceModalOpen(true)}
-                    >
-                        Create new profile
-                    </button>
+                    <div className="auth-footer-row">
+                        <span>Don't have an account?</span>
+                        <button
+                            type="button"
+                            className="auth-small-btn"
+                            onClick={() => setIsChoiceModalOpen(true)}
+                        >
+                            Create new profile
+                        </button>
+                    </div>
                 </div>
             </div>
 

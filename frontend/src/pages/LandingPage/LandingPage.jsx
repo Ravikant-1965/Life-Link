@@ -12,10 +12,10 @@ const PROJECT_MOTTOS = [
 ];
 
 export function LandingPage({ user, doctor, logout, logoutDoctor }) {
-    const [currentReviewIndex, setCurrentReviewIndex] = useState(0);
     const [openFaq, setOpenFaq] = useState(null);
     const [visitorCount, setVisitorCount] = useState(1428);
     const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const hasIncrementedRef = useRef(false);
 
     // Typewriter effect state for project goal motto (cycles every ~15 seconds)
@@ -94,9 +94,34 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
             quote: "Life Link gives my patients and emergency team complete peace of mind. Verified doctors can view emergency contacts, allergies, and medication photos in real-time when every minute matters.",
             author: "Dr. Sarah Chen",
             role: "Internal Medicine",
-            image: "/doctor_consultation.jpg"
+            image: "/doctors/dr_sarah_johnson.jpg"
+        },
+        {
+            rating: 5,
+            quote: "During severe trauma in ambulance transit, instant offline visibility into blood group, chronic conditions, and surgical history prevents fatal drug interactions before arriving at the ER.",
+            author: "Dr. Rajesh Sharma",
+            role: "Emergency Trauma Specialist",
+            image: "/doctors/dr_rajesh_sharma.jpg"
         }
     ];
+
+    const scrollToCard = (index) => {
+        const slots = document.querySelectorAll('.testimonial-slide-slot');
+        if (slots[index]) {
+            const navOffset = window.innerWidth <= 768 ? 72 : (window.innerWidth <= 960 ? 88 : 96);
+            const targetY = slots[index].offsetTop - navOffset;
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+        }
+    };
+
+    const scrollToFaqs = () => {
+        const faqsEl = document.getElementById('faqs');
+        if (faqsEl) {
+            const navOffset = window.innerWidth <= 768 ? 64 : 80;
+            const targetY = faqsEl.offsetTop - navOffset;
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
+        }
+    };
 
     const faqs = [
         {
@@ -113,14 +138,6 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
         }
     ];
 
-    const nextTestimonial = () => {
-        setCurrentReviewIndex((prev) => (prev + 1) % testimonials.length);
-    };
-
-    const prevTestimonial = () => {
-        setCurrentReviewIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
-    };
-
     return (
         <div className="landing-page">
             <nav className="landing-nav">
@@ -132,7 +149,8 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                     </div>
                 </div>
 
-                <div className="nav-links">
+                {/* Desktop Navigation Links */}
+                <div className="nav-links nav-links-desktop">
                     <a href="#how-it-works" className="nav-link">How it works</a>
                     <a href="#faqs" className="nav-link">FAQs</a>
 
@@ -148,11 +166,73 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         </>
                     ) : (
                         <>
-                            <Link to="/login" className="nav-btn btn-secondary">LogIn</Link>
+                            <Link to="/login" className="nav-btn btn-secondary">Login</Link>
                             <button onClick={() => setIsChoiceModalOpen(true)} className="nav-btn btn-primary">Create new profile</button>
                         </>
                     )}
                 </div>
+
+                {/* Mobile Quick Controls */}
+                <div className="nav-mobile-controls">
+                    {doctor ? (
+                        <Link to="/doctor/portal" className="nav-btn-mobile btn-secondary">Portal</Link>
+                    ) : user ? (
+                        <Link to="/dashboard" className="nav-btn-mobile btn-secondary">Dashboard</Link>
+                    ) : (
+                        <button onClick={() => setIsChoiceModalOpen(true)} className="nav-btn-mobile btn-primary">Get Started</button>
+                    )}
+
+                    <button 
+                        className="hamburger-btn" 
+                        onClick={() => setMobileMenuOpen(prev => !prev)} 
+                        aria-label="Toggle navigation menu"
+                        aria-expanded={mobileMenuOpen}
+                    >
+                        {mobileMenuOpen ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        )}
+                    </button>
+                </div>
+
+                {/* Mobile Dropdown Drawer */}
+                {mobileMenuOpen && (
+                    <div className="mobile-menu-drawer">
+                        <a href="#how-it-works" className="mobile-nav-item" onClick={() => setMobileMenuOpen(false)}>
+                            How it works
+                        </a>
+                        <a href="#faqs" className="mobile-nav-item" onClick={() => setMobileMenuOpen(false)}>
+                            FAQs
+                        </a>
+
+                        <div className="mobile-menu-divider" />
+
+                        {doctor ? (
+                            <div className="mobile-menu-actions">
+                                <Link to="/doctor/portal" className="mobile-menu-btn btn-secondary" onClick={() => setMobileMenuOpen(false)}>Doctor Portal</Link>
+                                <button onClick={() => { logoutDoctor(); setMobileMenuOpen(false); }} className="mobile-menu-btn btn-danger">Doctor Logout</button>
+                            </div>
+                        ) : user ? (
+                            <div className="mobile-menu-actions">
+                                <Link to="/dashboard" className="mobile-menu-btn btn-secondary" onClick={() => setMobileMenuOpen(false)}>Patient Dashboard</Link>
+                                <button onClick={() => { logout(); setMobileMenuOpen(false); }} className="mobile-menu-btn btn-danger">Logout</button>
+                            </div>
+                        ) : (
+                            <div className="mobile-menu-actions">
+                                <Link to="/login" className="mobile-menu-btn btn-secondary" onClick={() => setMobileMenuOpen(false)}>Login</Link>
+                                <button onClick={() => { setIsChoiceModalOpen(true); setMobileMenuOpen(false); }} className="mobile-menu-btn btn-primary">Create new profile</button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </nav>
 
             <section className="hero-section">
@@ -171,12 +251,22 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                         </p>
                     </div>
 
-                    {(user || doctor) && (
-                        <div className="hero-actions">
-                            {user && <Link to="/dashboard" className="hero-btn-primary">Open Patient Dashboard</Link>}
-                            {doctor && <Link to="/doctor/portal" className="hero-btn-ghost">Go to Doctor Portal</Link>}
-                        </div>
-                    )}
+                    <div className="hero-actions">
+                        {user ? (
+                            <Link to="/dashboard" className="hero-btn-primary">Open Patient Dashboard</Link>
+                        ) : doctor ? (
+                            <Link to="/doctor/portal" className="hero-btn-primary">Go to Doctor Portal</Link>
+                        ) : (
+                            <>
+                                <button onClick={() => setIsChoiceModalOpen(true)} className="hero-btn-primary">
+                                    Create Emergency Profile
+                                </button>
+                                <Link to="/login" className="hero-btn-secondary">
+                                    Doctor / Patient Login
+                                </Link>
+                            </>
+                        )}
+                    </div>
 
                     <div className="hero-trust">
                         <div className="trust-pill">Offline-ready Emergency ID</div>
@@ -282,52 +372,75 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
             </section>
 
             <section id="testimonials" className="testimonial-section">
-                <div className="testimonial-container">
-                    <div className="testimonial-header">
-                        <div>
-                            <span className="testimonial-kicker-pill">Testimonial</span>
-                            <h2 className="testimonial-title">Views of our trusted users</h2>
-                        </div>
-                        <div className="testimonial-nav-arrows">
-                            <button className="arrow-btn" onClick={prevTestimonial} aria-label="Previous review">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                            </button>
-                            <button className="arrow-btn" onClick={nextTestimonial} aria-label="Next review">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                            </button>
-                        </div>
-                    </div>
+                <div className="testimonial-section-head">
+                    <span className="testimonial-kicker-pill">Testimonial</span>
+                    <h2 className="testimonial-title">Views of our trusted users</h2>
+                </div>
 
-                    <div className="testimonial-card-grid">
-                        <div className="testimonial-image-card">
-                            <img
-                                src={testimonials[currentReviewIndex].image}
-                                alt={testimonials[currentReviewIndex].author}
-                                className="testimonial-user-img"
-                            />
-                        </div>
+                <div className="testimonial-stack-container">
+                    {testimonials.map((item, index) => (
+                        <div 
+                            className="testimonial-slide-slot" 
+                            key={index}
+                            style={{ zIndex: index + 1 }}
+                        >
+                            <div className="testimonial-card-box">
+                                <div className="testimonial-box-topbar">
+                                    <span className="testimonial-story-pill">Story {index + 1} of {testimonials.length}</span>
+                                    {index < testimonials.length - 1 ? (
+                                        <button 
+                                            type="button"
+                                            className="testimonial-scroll-hint-btn"
+                                            onClick={() => scrollToCard(index + 1)}
+                                            aria-label="Scroll to next testimonial"
+                                        >
+                                            Scroll Down for next testimonial ↓
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            type="button"
+                                            className="testimonial-scroll-hint-btn complete"
+                                            onClick={scrollToFaqs}
+                                            aria-label="Scroll to FAQs"
+                                        >
+                                            Next: FAQs ↓
+                                        </button>
+                                    )}
+                                </div>
 
-                        <div className="testimonial-quote-card">
-                            <div className="star-rating">
-                                {[...Array(5)].map((_, i) => (
-                                    <span key={i} className={i < testimonials[currentReviewIndex].rating ? "star-filled" : "star-empty"}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                                        </svg>
-                                    </span>
-                                ))}
+                                <div className="testimonial-card-grid">
+                                    <div className="testimonial-image-card">
+                                        <img
+                                            src={item.image}
+                                            alt={item.author}
+                                            className="testimonial-user-img"
+                                        />
+                                    </div>
+
+                                    <div className="testimonial-quote-card">
+                                        <div className="star-rating">
+                                            {[...Array(5)].map((_, i) => (
+                                                <span key={i} className={i < item.rating ? "star-filled" : "star-empty"}>
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                                    </svg>
+                                                </span>
+                                            ))}
+                                        </div>
+
+                                        <p className="testimonial-quote">
+                                            "{item.quote}"
+                                        </p>
+
+                                        <div className="testimonial-author-block">
+                                            <strong className="author-name">{item.author}</strong>
+                                            <span className="author-role">, {item.role}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-
-                            <p className="testimonial-quote">
-                                "{testimonials[currentReviewIndex].quote}"
-                            </p>
-
-                            <div className="testimonial-author-block">
-                                <strong className="author-name">{testimonials[currentReviewIndex].author}</strong>
-                                <span className="author-role">, {testimonials[currentReviewIndex].role}</span>
-                            </div>
                         </div>
-                    </div>
+                    ))}
                 </div>
             </section>
 

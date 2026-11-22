@@ -147,9 +147,14 @@ export function DoctorRegisterPage() {
                 </div>
 
                 <div className="auth-footer">
-                    Already registered? <Link to={`/doctor/login${healthId ? `?healthId=${healthId}` : ''}`}>Doctor login</Link>
-                    <br />
-                    Patient signup instead? <Link to="/register">Create patient profile</Link>
+                    <div className="auth-footer-row">
+                        <span>Already registered?</span>
+                        <Link to={`/doctor/login${healthId ? `?healthId=${healthId}` : ''}`}>Doctor login</Link>
+                    </div>
+                    <div className="auth-footer-row">
+                        <span>Patient signup instead?</span>
+                        <Link to="/register">Create patient profile</Link>
+                    </div>
                 </div>
             </div>
         </div>

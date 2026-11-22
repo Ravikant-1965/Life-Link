@@ -137,9 +137,14 @@ export function RegisterPage() {
 
         {/* Link to login page */}
         <div className="auth-footer">
-          Already have a patient account? <Link to="/login">Login here</Link>
-          <br />
-          Doctor onboarding? <Link to="/doctor/register">Register as a doctor</Link>
+          <div className="auth-footer-row">
+            <span>Already have a patient account?</span>
+            <Link to="/login">Login here</Link>
+          </div>
+          <div className="auth-footer-row">
+            <span>Doctor onboarding?</span>
+            <Link to="/doctor/register">Register as a doctor</Link>
+          </div>
         </div>
 
       </div>

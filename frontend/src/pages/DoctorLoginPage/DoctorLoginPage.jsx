@@ -200,9 +200,14 @@ export function DoctorLoginPage({ loginDoctor }) {
                 </div>
 
                 <div className="auth-footer">
-                    Need a doctor account? <Link to={`/doctor/register${healthId ? `?healthId=${healthId}` : ''}`}>Register here</Link>
-                    <br />
-                    Patient access? <Link to="/login">Patient login</Link>
+                    <div className="auth-footer-row">
+                        <span>Need a doctor account?</span>
+                        <Link to={`/doctor/register${healthId ? `?healthId=${healthId}` : ''}`}>Register here</Link>
+                    </div>
+                    <div className="auth-footer-row">
+                        <span>Patient access?</span>
+                        <Link to="/login">Patient login</Link>
+                    </div>
                 </div>
             </div>
         </div>

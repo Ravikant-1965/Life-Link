@@ -168,3 +168,50 @@
     color: #018ABE;
     transform: translateX(4px);
 }
+
+@media (max-width: 540px) {
+    .choice-modal-overlay {
+        padding: 16px;
+    }
+
+    .choice-modal-card {
+        padding: 28px 18px 24px;
+        border-radius: 18px;
+    }
+
+    .choice-modal-header {
+        margin-bottom: 20px;
+    }
+
+    .choice-modal-header h2 {
+        font-size: 20px;
+    }
+
+    .choice-modal-header p {
+        font-size: 13px;
+    }
+
+    .choice-options-grid {
+        gap: 12px;
+    }
+
+    .choice-option-card {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    .choice-icon-wrapper {
+        width: 42px;
+        height: 42px;
+        font-size: 20px;
+        border-radius: 10px;
+    }
+
+    .choice-card-text h3 {
+        font-size: 15px;
+    }
+
+    .choice-card-text p {
+        font-size: 12px;
+    }
+}
