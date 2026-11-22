@@ -22,15 +22,23 @@ CORS_ORIGINS=https://your-project.vercel.app
 
 The backend requires Node.js 22.13 or newer because it uses `node:sqlite`.
 
-### SQLite storage
+### Database Configuration
 
-Render's default filesystem is temporary. For durable patient and doctor data, attach a persistent disk and set:
+#### Option A: PostgreSQL with Neon.tech (Recommended for Production)
+Add this Render environment variable pointing to your cloud PostgreSQL database:
+
+```text
+DATABASE_URL=postgresql://neondb_owner:<password>@<host>/neondb?sslmode=require
+```
+With PostgreSQL, all patient, doctor, and document data is persistently hosted in the cloud with multi-container write-safety and zero disk fees.
+
+#### Option B: Local SQLite with Persistent Disk (Fallback)
+If `DATABASE_URL` is omitted, the backend falls back to local SQLite:
 
 ```text
 DATABASE_PATH=/var/data/lifelink.db
 ```
-
-Use `/var/data` as the disk mount path. Without a persistent disk, the deployed app is suitable only for demos because database changes can be lost.
+Attach a Render persistent disk mounted at `/var/data`.
 
 After deployment, confirm:
 

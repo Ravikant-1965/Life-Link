@@ -1,26 +1,93 @@
-const { DatabaseSync } = require('node:sqlite');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const DB_PATH = process.env.DATABASE_PATH
-    ? path.resolve(process.env.DATABASE_PATH)
-    : path.join(__dirname, 'lifelink.db');
+let db = null;
+let isPostgresMode = false;
 
-let db;
-
-function ensureColumn(tableName, columnName, definition) {
-    const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
-    const exists = columns.some((column) => column.name === columnName);
-
-    if (!exists) {
-        db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
-    }
+function convertSql(sql) {
+    let index = 1;
+    let converted = sql.replace(/\?/g, () => `$${index++}`);
+    converted = converted.replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
+    return converted;
 }
 
-function initDatabase() {
+function createPgDb(pool) {
+    return {
+        isPostgres: true,
+        async query(sql, params = []) {
+            const converted = convertSql(sql);
+            return await pool.query(converted, params);
+        },
+        prepare(sql) {
+            const converted = convertSql(sql);
+            return {
+                async get(...params) {
+                    const flat = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+                    const res = await pool.query(converted, flat);
+                    return res.rows[0] || null;
+                },
+                async all(...params) {
+                    const flat = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+                    const res = await pool.query(converted, flat);
+                    return res.rows;
+                },
+                async run(...params) {
+                    const flat = params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
+                    let finalSql = converted;
+                    if (/^\s*INSERT\s+INTO/i.test(finalSql) && !/RETURNING/i.test(finalSql)) {
+                        finalSql += ' RETURNING id';
+                    }
+                    const res = await pool.query(finalSql, flat);
+                    return {
+                        lastInsertRowid: res.rows[0]?.id || 0,
+                        changes: res.rowCount || 0
+                    };
+                }
+            };
+        },
+        async exec(sql) {
+            return await pool.query(sql);
+        }
+    };
+}
+
+async function initDatabase() {
+    const dbUrl = process.env.DATABASE_URL;
+
+    if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://'))) {
+        const { Pool } = require('pg');
+        const pool = new Pool({
+            connectionString: dbUrl,
+            ssl: { rejectUnauthorized: false }
+        });
+
+        console.log('Connecting to PostgreSQL database at:', dbUrl.split('@')[1] || 'remote host');
+        const client = await pool.connect();
+        try {
+            const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.postgres.sql'), 'utf-8');
+            await client.query(schemaSql);
+            console.log('PostgreSQL schema verified and ready.');
+        } finally {
+            client.release();
+        }
+
+        db = createPgDb(pool);
+        isPostgresMode = true;
+        console.log('PostgreSQL database initialized successfully!');
+        return db;
+    }
+
+    // Fallback: Local SQLite
+    const { DatabaseSync } = require('node:sqlite');
+    const DB_PATH = process.env.DATABASE_PATH
+        ? path.resolve(process.env.DATABASE_PATH)
+        : path.join(__dirname, 'lifelink.db');
+
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     db = new DatabaseSync(DB_PATH);
-    console.log('Connected to SQLite database at:', DB_PATH);
+    isPostgresMode = false;
+    console.log('Connected to local SQLite database at:', DB_PATH);
 
     db.exec(`
         CREATE TABLE IF NOT EXISTS users (
@@ -40,8 +107,8 @@ function initDatabase() {
             email                TEXT    NOT NULL UNIQUE,
             password_hash        TEXT    NOT NULL,
             license_number       TEXT    NOT NULL UNIQUE,
-            hospital             TEXT    NOT NULL,
-            specialization       TEXT    NOT NULL,
+            hospital             TEXT    NOT NULL DEFAULT '',
+            specialization       TEXT    NOT NULL DEFAULT '',
             verification_status  TEXT    NOT NULL DEFAULT 'pending',
             verified_at          TEXT,
             created_at           TEXT    DEFAULT (datetime('now'))
@@ -135,51 +202,19 @@ function initDatabase() {
         )
     `);
 
-    const existingVisitors = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
-    if (!existingVisitors) {
-        db.prepare('INSERT INTO site_stats (key, value) VALUES (?, ?)').run('total_visitors', 1428);
-    }
-
-    ensureColumn('profiles', 'medical_files', 'TEXT');
-    ensureColumn('profiles', 'document_images', "TEXT DEFAULT '[]'");
-    ensureColumn('profiles', 'medication_images', "TEXT DEFAULT '[]'");
-    ensureColumn('doctors', 'hospital', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'specialization', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'verification_status', "TEXT NOT NULL DEFAULT 'pending'");
-    ensureColumn('doctors', 'verified_at', 'TEXT');
-    ensureColumn('doctors', 'mfa_secret', 'TEXT');
-    ensureColumn('doctors', 'mfa_enabled', 'INTEGER NOT NULL DEFAULT 0');
-    ensureColumn('doctors', 'department', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'qualifications', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'experience_years', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'phone', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'avatar_url', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('doctors', 'bio', "TEXT NOT NULL DEFAULT ''");
-    ensureColumn('access_logs', 'doctor_id', 'INTEGER');
-    ensureColumn('access_logs', 'doctor_name', 'TEXT');
-    ensureColumn('access_logs', 'doctor_email', 'TEXT');
-    ensureColumn('access_logs', 'doctor_license', 'TEXT');
-    ensureColumn('access_logs', 'department', 'TEXT');
-    ensureColumn('access_logs', 'hospital', 'TEXT');
-    ensureColumn('access_logs', 'specialization', 'TEXT');
-    ensureColumn('access_logs', 'qualifications', 'TEXT');
-    ensureColumn('access_logs', 'experience_years', 'TEXT');
-    ensureColumn('access_logs', 'phone', 'TEXT');
-    ensureColumn('access_logs', 'avatar_url', 'TEXT');
-    ensureColumn('access_logs', 'access_reason', 'TEXT');
-    ensureColumn('patient_documents', 'extracted_text', 'TEXT');
-    ensureColumn('patient_documents', 'page_count', 'INTEGER DEFAULT 1');
-    ensureColumn('patient_documents', 'rag_status', "TEXT DEFAULT 'pending'");
-
-    console.log('All database tables are ready!');
+    console.log('All local SQLite database tables are ready!');
+    return db;
 }
 
 function getDb() {
     if (!db) {
         throw new Error('Database not initialized! Call initDatabase() first.');
     }
-
     return db;
 }
 
-module.exports = { initDatabase, getDb };
+function isPostgres() {
+    return isPostgresMode;
+}
+
+module.exports = { initDatabase, getDb, isPostgres };

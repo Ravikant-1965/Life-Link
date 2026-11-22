@@ -144,10 +144,7 @@ app.use((req, res, next) => {
     next();
 });
 
-initDatabase();
-seedDoctorProfilesAndLogs(getDb());
-
-function seedDoctorProfilesAndLogs(db) {
+async function seedDoctorProfilesAndLogs(db) {
     try {
         const defaultPasswordHash = bcrypt.hashSync('Doctor@123', 10);
         const now = Date.now();
@@ -222,11 +219,11 @@ function seedDoctorProfilesAndLogs(db) {
         const targetPatientHealthIds = ['LL-2KZAM', 'LL-KQGSX'];
 
         for (const doc of fakeDoctors) {
-            let existingDoc = db.prepare('SELECT id FROM doctors WHERE email = ? OR license_number = ?').get(doc.email, doc.license_number);
+            let existingDoc = await db.prepare('SELECT id FROM doctors WHERE email = ? OR license_number = ?').get(doc.email, doc.license_number);
             let doctorId;
 
             if (!existingDoc) {
-                const res = db.prepare(`
+                const res = await db.prepare(`
                     INSERT INTO doctors (
                         name, email, password_hash, license_number, hospital,
                         specialization, department, qualifications, experience_years,
@@ -240,7 +237,7 @@ function seedDoctorProfilesAndLogs(db) {
                 doctorId = Number(res.lastInsertRowid);
             } else {
                 doctorId = existingDoc.id;
-                db.prepare(`
+                await db.prepare(`
                     UPDATE doctors
                     SET
                         name = ?,
@@ -262,7 +259,7 @@ function seedDoctorProfilesAndLogs(db) {
             }
 
             for (const healthId of targetPatientHealthIds) {
-                const existingLog = db.prepare(`
+                const existingLog = await db.prepare(`
                     SELECT id FROM access_logs
                     WHERE health_id = ? AND doctor_license = ?
                 `).get(healthId, doc.license_number);
@@ -270,7 +267,7 @@ function seedDoctorProfilesAndLogs(db) {
                 const accessedAt = new Date(now - doc.timeOffset).toISOString();
 
                 if (!existingLog) {
-                    db.prepare(`
+                    await db.prepare(`
                         INSERT INTO access_logs (
                             health_id, doctor_id, doctor_name, doctor_email, doctor_license,
                             department, hospital, specialization, qualifications, experience_years,
@@ -282,7 +279,7 @@ function seedDoctorProfilesAndLogs(db) {
                         doc.experience_years, doc.phone, doc.avatar_url, doc.reason, accessedAt
                     );
                 } else {
-                    db.prepare(`
+                    await db.prepare(`
                         UPDATE access_logs
                         SET
                             doctor_id = ?,
@@ -306,11 +303,11 @@ function seedDoctorProfilesAndLogs(db) {
             }
         }
         // Ensure medical profile exists for user 1 (Ravi kant) so doctors can lookup his record
-        const user1 = db.prepare('SELECT id, name FROM users WHERE id = 1').get();
+        const user1 = await db.prepare('SELECT id, name FROM users WHERE id = 1').get();
         if (user1) {
-            const p1 = db.prepare('SELECT id FROM profiles WHERE user_id = 1').get();
+            const p1 = await db.prepare('SELECT id FROM profiles WHERE user_id = 1').get();
             if (!p1) {
-                db.prepare(`
+                await db.prepare(`
                     INSERT INTO profiles (
                         user_id, full_name, blood_group, date_of_birth, age, gender,
                         allergies, chronic_conditions, emergency_contact_name, emergency_contact_phone
@@ -320,7 +317,7 @@ function seedDoctorProfilesAndLogs(db) {
         }
 
         // Backfill department for legacy doctors if blank
-        db.prepare("UPDATE doctors SET department = specialization WHERE (department = '' OR department IS NULL) AND specialization != ''").run();
+        await db.prepare("UPDATE doctors SET department = specialization WHERE (department = '' OR department IS NULL) AND specialization != ''").run();
 
         console.log('Seeded 4 fake doctor profiles & access logs for Ravi kant and Ravi Mishra successfully.');
     } catch (err) {
@@ -473,7 +470,7 @@ function checkPatientAuth(req, res, next) {
     }
 }
 
-function checkDoctorAuth(req, res, next) {
+async function checkDoctorAuth(req, res, next) {
     const token = getTokenFromRequest(req);
 
     if (!token) {
@@ -487,7 +484,7 @@ function checkDoctorAuth(req, res, next) {
         }
 
         const db = getDb();
-        const doctor = db.prepare(`
+        const doctor = await db.prepare(`
             SELECT *
             FROM doctors
             WHERE id = ?
@@ -521,7 +518,7 @@ function checkAdminReviewKey(req, res, next) {
     next();
 }
 
-function fetchEmergencyProfile(healthId, doctor) {
+async function fetchEmergencyProfile(healthId, doctor) {
     const db = getDb();
     const normalizedHealthId = healthId.trim().toUpperCase();
 
@@ -532,7 +529,7 @@ function fetchEmergencyProfile(healthId, doctor) {
         };
     }
 
-    const user = db.prepare(`
+    const user = await db.prepare(`
         SELECT id, name, health_id
         FROM users
         WHERE health_id = ?
@@ -542,16 +539,15 @@ function fetchEmergencyProfile(healthId, doctor) {
         return { status: 404, body: { message: 'Patient not found.' } };
     }
 
-    const profile = formatProfile(
-        db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(user.id)
-    );
+    const rawProfile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(user.id);
+    const profile = formatProfile(rawProfile);
 
     if (!profile) {
         return { status: 404, body: { message: 'Patient has no medical profile set up.' } };
     }
 
     if (doctor) {
-        db.prepare(`
+        await db.prepare(`
             INSERT INTO access_logs (
                 health_id, doctor_id, doctor_name, doctor_email, doctor_license,
                 department, hospital, specialization, qualifications, experience_years,
@@ -577,7 +573,7 @@ function fetchEmergencyProfile(healthId, doctor) {
 
     let documents = [];
     try {
-        const rawDocs = db.prepare(`
+        const rawDocs = await db.prepare(`
             SELECT id, health_id, file_name, file_size, mime_type, category, uploaded_at
             FROM patient_documents
             WHERE health_id = ?
@@ -634,23 +630,23 @@ app.get('/api/health', (_req, res) => {
     });
 });
 
-app.get('/api/visitors', (_req, res) => {
+app.get('/api/visitors', async (_req, res) => {
     try {
         const db = getDb();
-        const row = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
-        const count = row ? row.value : 1428;
+        const row = await db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
+        const count = row ? Number(row.value) : 1428;
         res.send({ count });
     } catch (_err) {
         res.status(500).send({ message: 'Failed to fetch visitor count', count: 1428 });
     }
 });
 
-app.post('/api/visitors/increment', (_req, res) => {
+app.post('/api/visitors/increment', async (_req, res) => {
     try {
         const db = getDb();
-        db.prepare('UPDATE site_stats SET value = value + 1 WHERE key = ?').run('total_visitors');
-        const row = db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
-        const count = row ? row.value : 1429;
+        await db.prepare('UPDATE site_stats SET value = value + 1 WHERE key = ?').run('total_visitors');
+        const row = await db.prepare('SELECT value FROM site_stats WHERE key = ?').get('total_visitors');
+        const count = row ? Number(row.value) : 1429;
         res.send({ count });
     } catch (_err) {
         res.status(500).send({ message: 'Failed to increment visitor count' });
@@ -794,8 +790,8 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
 
     try {
         const db = getDb();
-        const user = db.prepare('SELECT id, name, health_id FROM users WHERE id = ?').get(req.userId);
-        const rawProfile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId);
+        const user = await db.prepare('SELECT id, name, health_id FROM users WHERE id = ?').get(req.userId);
+        const rawProfile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId);
         const profile = formatProfile(rawProfile);
 
         const referencedRecords = [];
@@ -872,7 +868,7 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
 
         try {
             const db = getDb();
-            const user = db.prepare('SELECT id, health_id, name FROM users WHERE id = ?').get(req.userId);
+            const user = await db.prepare('SELECT id, health_id, name FROM users WHERE id = ?').get(req.userId);
             if (!user) {
                 return res.status(404).send({ message: 'User not found.' });
             }
@@ -912,7 +908,7 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
                 INSERT INTO patient_documents (user_id, health_id, file_name, file_key, file_size, mime_type, category, extracted_text, page_count, rag_status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            const info = stmt.run(
+            const info = await stmt.run(
                 user.id,
                 user.health_id,
                 rawFileName,
@@ -925,7 +921,7 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
                 ragStatus
             );
 
-            const insertedDoc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(info.lastInsertRowid);
+            const insertedDoc = await db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(info.lastInsertRowid);
 
             // Automatically index text into Python ChromaDB vector store if available
             if (extractedText) {
@@ -943,11 +939,11 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
                 }).then(async (r) => {
                     if (r.ok) {
                         try {
-                            getDb().prepare('UPDATE patient_documents SET rag_status = ? WHERE id = ?').run('indexed', insertedDoc.id);
+                            await getDb().prepare('UPDATE patient_documents SET rag_status = ? WHERE id = ?').run('indexed', insertedDoc.id);
                         } catch (_dbE) {}
                     }
                 }).catch(() => {
-                    // Python service offline; text remains safely saved in SQLite
+                    // Python service offline; text remains safely saved in database
                 });
             }
 
@@ -967,10 +963,10 @@ app.post('/api/documents/upload', checkPatientAuth, (req, res) => {
 });
 
 // 2. List Documents for Current Patient (Patient Auth)
-app.get('/api/documents', checkPatientAuth, (req, res) => {
+app.get('/api/documents', checkPatientAuth, async (req, res) => {
     try {
         const db = getDb();
-        const docs = db.prepare(`
+        const docs = await db.prepare(`
             SELECT id, user_id, health_id, file_name, file_size, mime_type, category, uploaded_at, page_count, rag_status
             FROM patient_documents
             WHERE user_id = ?
@@ -999,7 +995,7 @@ app.get('/api/documents/:id/download', async (req, res) => {
 
         const decoded = jwt.verify(token, JWT_SECRET);
         const db = getDb();
-        const doc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(req.params.id);
+        const doc = await db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(req.params.id);
 
         if (!doc) {
             return res.status(404).send({ message: 'Document not found.' });
@@ -1011,7 +1007,7 @@ app.get('/api/documents/:id/download', async (req, res) => {
                 return res.status(403).send({ message: 'Unauthorized to access this patient document.' });
             }
         } else if (decoded.role === 'doctor') {
-            const activeSession = db.prepare(`
+            const activeSession = await db.prepare(`
                 SELECT * FROM doctor_patient_sessions
                 WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
             `).get(decoded.id, doc.health_id, Date.now());
@@ -1046,7 +1042,7 @@ app.get('/api/documents/:id/view', async (req, res) => {
 
         const decoded = jwt.verify(token, JWT_SECRET);
         const db = getDb();
-        const doc = db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(req.params.id);
+        const doc = await db.prepare('SELECT * FROM patient_documents WHERE id = ?').get(req.params.id);
 
         if (!doc) {
             return res.status(404).send({ message: 'Document not found.' });
@@ -1058,7 +1054,7 @@ app.get('/api/documents/:id/view', async (req, res) => {
                 return res.status(403).send({ message: 'Unauthorized to access this document.' });
             }
         } else if (decoded.role === 'doctor') {
-            const activeSession = db.prepare(`
+            const activeSession = await db.prepare(`
                 SELECT * FROM doctor_patient_sessions
                 WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
             `).get(decoded.id, doc.health_id, Date.now());
@@ -1087,7 +1083,7 @@ app.get('/api/documents/:id/view', async (req, res) => {
 app.delete('/api/documents/:id', checkPatientAuth, async (req, res) => {
     try {
         const db = getDb();
-        const doc = db.prepare('SELECT * FROM patient_documents WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+        const doc = await db.prepare('SELECT * FROM patient_documents WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
 
         if (!doc) {
             return res.status(404).send({ message: 'Document not found or unauthorized.' });
@@ -1100,8 +1096,8 @@ app.delete('/api/documents/:id', checkPatientAuth, async (req, res) => {
             console.warn('[R2 Delete Warning]:', r2Err.message);
         }
 
-        // Delete from SQLite database
-        db.prepare('DELETE FROM patient_documents WHERE id = ?').run(doc.id);
+        // Delete from database
+        await db.prepare('DELETE FROM patient_documents WHERE id = ?').run(doc.id);
 
         // Delete from Python ChromaDB vector store if service is running
         fetch('http://127.0.0.1:8000/documents/delete', {
@@ -1122,13 +1118,13 @@ app.delete('/api/documents/:id', checkPatientAuth, async (req, res) => {
 });
 
 // 6. Doctor fetch documents for a patient during active session (Doctor Auth)
-app.get(['/api/doctor/patient/:healthId/documents', '/api/doctor/patient/:id/documents'], checkDoctorAuth, (req, res) => {
+app.get(['/api/doctor/patient/:healthId/documents', '/api/doctor/patient/:id/documents'], checkDoctorAuth, async (req, res) => {
     try {
         const db = getDb();
         const patientHealthId = (req.params.healthId || req.params.id || '').toUpperCase();
 
         // Verify active doctor session for this health_id
-        const activeSession = db.prepare(`
+        const activeSession = await db.prepare(`
             SELECT * FROM doctor_patient_sessions
             WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
         `).get(req.doctor.id, patientHealthId, Date.now());
@@ -1137,7 +1133,7 @@ app.get(['/api/doctor/patient/:healthId/documents', '/api/doctor/patient/:id/doc
             return res.status(403).send({ message: 'Active clinical session required to access patient documents.' });
         }
 
-        const docs = db.prepare(`
+        const docs = await db.prepare(`
             SELECT id, health_id, file_name, file_size, mime_type, category, uploaded_at
             FROM patient_documents
             WHERE health_id = ?
@@ -1156,7 +1152,7 @@ app.get(['/api/doctor/patient/:healthId/documents', '/api/doctor/patient/:id/doc
     }
 });
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
@@ -1169,7 +1165,7 @@ app.post('/api/register', (req, res) => {
 
     const db = getDb();
     const safeEmail = normalizeEmail(email);
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(safeEmail);
+    const existingUser = await db.prepare('SELECT id FROM users WHERE email = ?').get(safeEmail);
 
     if (existingUser) {
         return res.status(400).send({ message: 'This email is already registered. Please login.' });
@@ -1178,11 +1174,11 @@ app.post('/api/register', (req, res) => {
     const passwordHash = bcrypt.hashSync(password, 10);
     let healthId = generateHealthId();
 
-    while (db.prepare('SELECT id FROM users WHERE health_id = ?').get(healthId)) {
+    while (await db.prepare('SELECT id FROM users WHERE health_id = ?').get(healthId)) {
         healthId = generateHealthId();
     }
 
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO users (name, email, password_hash, health_id)
         VALUES (?, ?, ?, ?)
     `).run(name.trim(), safeEmail, passwordHash, healthId);
@@ -1193,7 +1189,7 @@ app.post('/api/register', (req, res) => {
     });
 });
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -1201,7 +1197,7 @@ app.post('/api/login', (req, res) => {
     }
 
     const db = getDb();
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
+    const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
 
     if (!user || !bcrypt.compareSync(password, user.password_hash)) {
         return res.status(401).send({ message: 'Invalid email or password.' });
@@ -1230,7 +1226,7 @@ app.post('/api/forgot-password', async (req, res) => {
 
     const safeEmail = normalizeEmail(email);
     const db = getDb();
-    const user = db.prepare('SELECT id, name FROM users WHERE email = ?').get(safeEmail);
+    const user = await db.prepare('SELECT id, name FROM users WHERE email = ?').get(safeEmail);
 
     const genericResponse = { message: 'If an account exists with this email, a password reset link has been sent.' };
 
@@ -1241,7 +1237,7 @@ app.post('/api/forgot-password', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
 
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO password_reset_tokens (email, token, expires_at)
         VALUES (?, ?, ?)
     `).run(safeEmail, token, expiresAt);
@@ -1267,7 +1263,7 @@ app.post('/api/forgot-password', async (req, res) => {
     res.status(200).send(genericResponse);
 });
 
-app.post('/api/reset-password', (req, res) => {
+app.post('/api/reset-password', async (req, res) => {
     const { token, password, confirmPassword } = req.body;
 
     if (!token) {
@@ -1283,7 +1279,7 @@ app.post('/api/reset-password', (req, res) => {
     }
 
     const db = getDb();
-    const tokenRecord = db.prepare(`
+    const tokenRecord = await db.prepare(`
         SELECT * FROM password_reset_tokens
         WHERE token = ? AND used = 0 AND expires_at > ?
     `).get(token, Date.now());
@@ -1294,14 +1290,14 @@ app.post('/api/reset-password', (req, res) => {
 
     const passwordHash = bcrypt.hashSync(password, 10);
 
-    db.prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(passwordHash, tokenRecord.email);
-    db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(tokenRecord.id);
+    await db.prepare('UPDATE users SET password_hash = ? WHERE email = ?').run(passwordHash, tokenRecord.email);
+    await db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(tokenRecord.id);
 
     res.send({ message: 'Password has been reset successfully.' });
 });
 
 
-app.post('/api/doctors/register', (req, res) => {
+app.post('/api/doctors/register', async (req, res) => {
     const {
         name,
         email,
@@ -1331,7 +1327,7 @@ app.post('/api/doctors/register', (req, res) => {
     const db = getDb();
     const safeEmail = normalizeEmail(email);
     const safeLicense = licenseNumber.trim().toUpperCase();
-    const existingDoctor = db.prepare(`
+    const existingDoctor = await db.prepare(`
         SELECT id
         FROM doctors
         WHERE email = ? OR license_number = ?
@@ -1346,7 +1342,7 @@ app.post('/api/doctors/register', (req, res) => {
     const isVerified = verificationCode && verificationCode === DOCTOR_VERIFICATION_CODE;
     const passwordHash = bcrypt.hashSync(password, 10);
 
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO doctors (
             name, email, password_hash, license_number, hospital, specialization,
             department, qualifications, experience_years, phone, avatar_url, bio,
@@ -1405,7 +1401,7 @@ app.post('/api/upload-image', (req, res) => {
     }
 });
 
-app.post('/api/doctors/login', (req, res) => {
+app.post('/api/doctors/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -1413,7 +1409,7 @@ app.post('/api/doctors/login', (req, res) => {
     }
 
     const db = getDb();
-    const doctor = db.prepare('SELECT * FROM doctors WHERE email = ?').get(normalizeEmail(email));
+    const doctor = await db.prepare('SELECT * FROM doctors WHERE email = ?').get(normalizeEmail(email));
 
     if (!doctor || !bcrypt.compareSync(password, doctor.password_hash)) {
         return res.status(401).send({ message: 'Invalid doctor email or password.' });
@@ -1453,7 +1449,7 @@ app.post('/api/doctors/login', (req, res) => {
     });
 });
 
-app.post('/api/doctors/mfa/verify-login', (req, res) => {
+app.post('/api/doctors/mfa/verify-login', async (req, res) => {
     const { tempToken, code } = req.body;
 
     if (!tempToken || !code) {
@@ -1467,7 +1463,7 @@ app.post('/api/doctors/mfa/verify-login', (req, res) => {
         }
 
         const db = getDb();
-        const doctor = db.prepare('SELECT * FROM doctors WHERE id = ?').get(decoded.id);
+        const doctor = await db.prepare('SELECT * FROM doctors WHERE id = ?').get(decoded.id);
 
         if (!doctor || doctor.mfa_enabled !== 1 || !doctor.mfa_secret) {
             return res.status(400).send({ message: 'MFA is not enabled on this doctor account.' });
@@ -1503,12 +1499,12 @@ app.post('/api/doctors/mfa/setup', checkDoctorAuth, async (req, res) => {
     try {
         const db = getDb();
         const doctorId = req.doctor.id;
-        const doctor = db.prepare('SELECT email, mfa_secret, mfa_enabled FROM doctors WHERE id = ?').get(doctorId);
+        const doctor = await db.prepare('SELECT email, mfa_secret, mfa_enabled FROM doctors WHERE id = ?').get(doctorId);
 
         let secret = doctor.mfa_secret;
         if (!secret) {
             secret = generateSecret();
-            db.prepare('UPDATE doctors SET mfa_secret = ? WHERE id = ?').run(secret, doctorId);
+            await db.prepare('UPDATE doctors SET mfa_secret = ? WHERE id = ?').run(secret, doctorId);
         }
 
         const otpauthUrl = generateURI({
@@ -1528,7 +1524,7 @@ app.post('/api/doctors/mfa/setup', checkDoctorAuth, async (req, res) => {
     }
 });
 
-app.post('/api/doctors/mfa/verify-setup', checkDoctorAuth, (req, res) => {
+app.post('/api/doctors/mfa/verify-setup', checkDoctorAuth, async (req, res) => {
     const { code } = req.body;
 
     if (!code) {
@@ -1536,7 +1532,7 @@ app.post('/api/doctors/mfa/verify-setup', checkDoctorAuth, (req, res) => {
     }
 
     const db = getDb();
-    const doctor = db.prepare('SELECT id, mfa_secret FROM doctors WHERE id = ?').get(req.doctor.id);
+    const doctor = await db.prepare('SELECT id, mfa_secret FROM doctors WHERE id = ?').get(req.doctor.id);
 
     if (!doctor || !doctor.mfa_secret) {
         return res.status(400).send({ message: 'MFA setup not initialized. Call setup endpoint first.' });
@@ -1547,15 +1543,15 @@ app.post('/api/doctors/mfa/verify-setup', checkDoctorAuth, (req, res) => {
         return res.status(400).send({ message: 'Invalid 6-digit code. Check your authenticator app.' });
     }
 
-    db.prepare('UPDATE doctors SET mfa_enabled = 1 WHERE id = ?').run(doctor.id);
+    await db.prepare('UPDATE doctors SET mfa_enabled = 1 WHERE id = ?').run(doctor.id);
 
     res.send({ message: 'Multi-Factor Authentication (MFA) enabled successfully!' });
 });
 
-app.post('/api/doctors/mfa/disable', checkDoctorAuth, (req, res) => {
+app.post('/api/doctors/mfa/disable', checkDoctorAuth, async (req, res) => {
     const { code } = req.body;
     const db = getDb();
-    const doctor = db.prepare('SELECT id, mfa_secret, mfa_enabled FROM doctors WHERE id = ?').get(req.doctor.id);
+    const doctor = await db.prepare('SELECT id, mfa_secret, mfa_enabled FROM doctors WHERE id = ?').get(req.doctor.id);
 
     if (!doctor || doctor.mfa_enabled !== 1) {
         return res.status(400).send({ message: 'MFA is not currently enabled.' });
@@ -1568,7 +1564,7 @@ app.post('/api/doctors/mfa/disable', checkDoctorAuth, (req, res) => {
         }
     }
 
-    db.prepare('UPDATE doctors SET mfa_enabled = 0, mfa_secret = NULL WHERE id = ?').run(doctor.id);
+    await db.prepare('UPDATE doctors SET mfa_enabled = 0, mfa_secret = NULL WHERE id = ?').run(doctor.id);
     res.send({ message: 'MFA has been disabled for your account.' });
 });
 
@@ -1593,7 +1589,7 @@ app.get('/api/doctors/me', checkDoctorAuth, (req, res) => {
     });
 });
 
-app.put('/api/doctors/profile', checkDoctorAuth, (req, res) => {
+app.put('/api/doctors/profile', checkDoctorAuth, async (req, res) => {
     const {
         hospital,
         specialization,
@@ -1606,7 +1602,7 @@ app.put('/api/doctors/profile', checkDoctorAuth, (req, res) => {
     } = req.body;
 
     const db = getDb();
-    db.prepare(`
+    await db.prepare(`
         UPDATE doctors
         SET
             hospital = COALESCE(?, hospital),
@@ -1630,7 +1626,7 @@ app.put('/api/doctors/profile', checkDoctorAuth, (req, res) => {
         req.doctor.id
     );
 
-    const updated = db.prepare('SELECT * FROM doctors WHERE id = ?').get(req.doctor.id);
+    const updated = await db.prepare('SELECT * FROM doctors WHERE id = ?').get(req.doctor.id);
     res.send({
         message: 'Doctor profile updated successfully.',
         doctor: {
@@ -1652,9 +1648,9 @@ app.put('/api/doctors/profile', checkDoctorAuth, (req, res) => {
     });
 });
 
-app.get('/api/admin/doctors', checkAdminReviewKey, (_req, res) => {
+app.get('/api/admin/doctors', checkAdminReviewKey, async (_req, res) => {
     const db = getDb();
-    const doctors = db.prepare(`
+    const doctors = await db.prepare(`
         SELECT id, name, email, license_number, hospital, specialization, verification_status, created_at, verified_at
         FROM doctors
         ORDER BY created_at DESC
@@ -1663,16 +1659,16 @@ app.get('/api/admin/doctors', checkAdminReviewKey, (_req, res) => {
     res.send(doctors);
 });
 
-app.post('/api/admin/doctors/:doctorId/verify', checkAdminReviewKey, (req, res) => {
+app.post('/api/admin/doctors/:doctorId/verify', checkAdminReviewKey, async (req, res) => {
     const db = getDb();
     const doctorId = Number(req.params.doctorId);
-    const doctor = db.prepare('SELECT id FROM doctors WHERE id = ?').get(doctorId);
+    const doctor = await db.prepare('SELECT id FROM doctors WHERE id = ?').get(doctorId);
 
     if (!doctor) {
         return res.status(404).send({ message: 'Doctor account not found.' });
     }
 
-    db.prepare(`
+    await db.prepare(`
         UPDATE doctors
         SET verification_status = 'verified', verified_at = ?
         WHERE id = ?
@@ -1681,17 +1677,16 @@ app.post('/api/admin/doctors/:doctorId/verify', checkAdminReviewKey, (req, res) 
     return res.send({ message: 'Doctor verified successfully.' });
 });
 
-app.get('/api/profile', checkPatientAuth, (req, res) => {
+app.get('/api/profile', checkPatientAuth, async (req, res) => {
     const db = getDb();
-    const user = db.prepare(`
+    const user = await db.prepare(`
         SELECT id, name, email, health_id
         FROM users
         WHERE id = ?
     `).get(req.userId);
 
-    const profile = formatProfile(
-        db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId)
-    );
+    const rawProfile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId);
+    const profile = formatProfile(rawProfile);
 
     res.send({
         user,
@@ -1699,7 +1694,7 @@ app.get('/api/profile', checkPatientAuth, (req, res) => {
     });
 });
 
-app.post('/api/profile', checkPatientAuth, (req, res) => {
+app.post('/api/profile', checkPatientAuth, async (req, res) => {
     try {
         const {
             fullName,
@@ -1720,7 +1715,7 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
         } = req.body;
 
         const db = getDb();
-        const existingProfile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId);
+        const existingProfile = await db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.userId);
         const safeDocumentLinks = normalizeDocumentLinks(
             typeof documentLinks === 'string' ? documentLinks : (medicalFiles || '')
         );
@@ -1751,7 +1746,7 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
         const encOrganDonorStatus = encryptText(safeOrganDonorStatus);
 
         if (existingProfile) {
-            db.prepare(`
+            await db.prepare(`
                 UPDATE profiles SET
                     full_name               = ?,
                     date_of_birth           = ?,
@@ -1786,7 +1781,7 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
                 req.userId
             );
         } else {
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO profiles (
                     user_id, full_name, date_of_birth, blood_group, allergies,
                     chronic_conditions, current_medications, previous_surgeries,
@@ -1819,12 +1814,12 @@ app.post('/api/profile', checkPatientAuth, (req, res) => {
     }
 });
 
-function checkDoctorPatientSession(req, res, next) {
+async function checkDoctorPatientSession(req, res, next) {
     const db = getDb();
     const doctorId = req.doctor.id;
     const healthId = req.params.healthId.trim().toUpperCase();
 
-    const session = db.prepare(`
+    const session = await db.prepare(`
         SELECT * FROM doctor_patient_sessions
         WHERE doctor_id = ? AND health_id = ? AND expires_at > ?
     `).get(doctorId, healthId, Date.now());
@@ -1839,7 +1834,7 @@ function checkDoctorPatientSession(req, res, next) {
     next();
 }
 
-app.post('/api/doctor/patient/:healthId/access', checkDoctorAuth, (req, res) => {
+app.post('/api/doctor/patient/:healthId/access', checkDoctorAuth, async (req, res) => {
     const { healthId } = req.params;
     const doctor = req.doctor;
     const db = getDb();
@@ -1850,18 +1845,19 @@ app.post('/api/doctor/patient/:healthId/access', checkDoctorAuth, (req, res) => 
         return res.status(400).send({ message: 'Enter a valid Health ID in the format LL-ABCDE.' });
     }
 
-    const user = db.prepare('SELECT id, name, health_id FROM users WHERE health_id = ?').get(normalizedHealthId);
+    const user = await db.prepare('SELECT id, name, health_id FROM users WHERE health_id = ?').get(normalizedHealthId);
     if (!user) {
         return res.status(404).send({ message: 'Patient not found.' });
     }
 
-    const profile = formatProfile(db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(user.id));
+    const rawProfile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(user.id);
+    const profile = formatProfile(rawProfile);
     if (!profile) {
         return res.status(404).send({ message: 'Patient has no medical profile set up.' });
     }
 
     // Insert access log with full doctor profile snapshot
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO access_logs (
             health_id, doctor_id, doctor_name, doctor_email, doctor_license,
             department, hospital, specialization, qualifications, experience_years,
@@ -1889,10 +1885,10 @@ app.post('/api/doctor/patient/:healthId/access', checkDoctorAuth, (req, res) => 
     const expiresAt = startedAt + 30 * 60 * 1000;
 
     // Delete any existing sessions for this doctor and this healthId
-    db.prepare('DELETE FROM doctor_patient_sessions WHERE doctor_id = ? AND health_id = ?').run(doctor.id, normalizedHealthId);
+    await db.prepare('DELETE FROM doctor_patient_sessions WHERE doctor_id = ? AND health_id = ?').run(doctor.id, normalizedHealthId);
 
     // Insert new session
-    db.prepare(`
+    await db.prepare(`
         INSERT INTO doctor_patient_sessions (doctor_id, health_id, started_at, expires_at)
         VALUES (?, ?, ?, ?)
     `).run(doctor.id, normalizedHealthId, startedAt, expiresAt);
@@ -1918,16 +1914,16 @@ app.post('/api/doctor/patient/:healthId/access', checkDoctorAuth, (req, res) => 
     });
 });
 
-app.get('/api/doctor/patient/:healthId', checkDoctorAuth, checkDoctorPatientSession, (req, res) => {
-    const result = fetchEmergencyProfile(req.params.healthId, null);
+app.get('/api/doctor/patient/:healthId', checkDoctorAuth, checkDoctorPatientSession, async (req, res) => {
+    const result = await fetchEmergencyProfile(req.params.healthId, null);
     if (result.status === 200) {
         result.body.expiresAt = req.sessionExpiresAt;
     }
     res.status(result.status).send(result.body);
 });
 
-app.get('/api/emergency/:healthId', checkDoctorAuth, checkDoctorPatientSession, (req, res) => {
-    const result = fetchEmergencyProfile(req.params.healthId, null);
+app.get('/api/emergency/:healthId', checkDoctorAuth, checkDoctorPatientSession, async (req, res) => {
+    const result = await fetchEmergencyProfile(req.params.healthId, req.doctor);
     if (result.status === 200) {
         result.body.expiresAt = req.sessionExpiresAt;
     }
@@ -1935,15 +1931,15 @@ app.get('/api/emergency/:healthId', checkDoctorAuth, checkDoctorPatientSession, 
 });
 
 
-app.get('/api/access-log', checkPatientAuth, (req, res) => {
+app.get('/api/access-log', checkPatientAuth, async (req, res) => {
     const db = getDb();
-    const user = db.prepare('SELECT health_id FROM users WHERE id = ?').get(req.userId);
+    const user = await db.prepare('SELECT health_id FROM users WHERE id = ?').get(req.userId);
 
     if (!user) {
         return res.status(404).send({ message: 'Patient account not found.' });
     }
 
-    const logs = db.prepare(`
+    const logs = await db.prepare(`
         SELECT
             l.id,
             l.health_id,
@@ -1970,7 +1966,7 @@ app.get('/api/access-log', checkPatientAuth, (req, res) => {
     res.send(logs);
 });
 
-app.post('/api/access-log/offline-sync', checkDoctorAuth, (req, res) => {
+app.post('/api/access-log/offline-sync', checkDoctorAuth, async (req, res) => {
     const { logs } = req.body;
     if (!Array.isArray(logs) || logs.length === 0) {
         return res.status(400).send({ message: 'Valid logs array is required.' });
@@ -1986,7 +1982,7 @@ app.post('/api/access-log/offline-sync', checkDoctorAuth, (req, res) => {
     let insertedCount = 0;
     for (const log of logs) {
         if (log && log.healthId) {
-            insertStmt.run(
+            await insertStmt.run(
                 log.healthId.trim().toUpperCase(),
                 req.doctor.id,
                 req.doctor.name,
@@ -2001,26 +1997,38 @@ app.post('/api/access-log/offline-sync', checkDoctorAuth, (req, res) => {
     res.send({ success: true, count: insertedCount });
 });
 
-const server = app.listen(PORT, () => {
-    console.log('\nLife Link backend is running!');
-    console.log(`Listening on port ${PORT}`);
-    console.log('\nAvailable API routes:');
-    console.log('  POST   /api/register');
-    console.log('  POST   /api/login');
-    console.log('  POST   /api/doctors/register');
-    console.log('  POST   /api/doctors/login');
-    console.log('  GET    /api/profile             (patient login required)');
-    console.log('  POST   /api/profile             (patient login required)');
-    console.log('  GET    /api/doctor/patient/:id  (verified doctor login required)');
-    console.log('  GET    /api/access-log          (patient login required)\n');
-});
+async function startServer() {
+    try {
+        await initDatabase();
+        await seedDoctorProfilesAndLogs(getDb());
 
-server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use. Stop the other process or change PORT before restarting Life Link.`);
+        const server = app.listen(PORT, () => {
+            console.log('\nLife Link backend is running!');
+            console.log(`Listening on port ${PORT}`);
+            console.log('\nAvailable API routes:');
+            console.log('  POST   /api/register');
+            console.log('  POST   /api/login');
+            console.log('  POST   /api/doctors/register');
+            console.log('  POST   /api/doctors/login');
+            console.log('  GET    /api/profile             (patient login required)');
+            console.log('  POST   /api/profile             (patient login required)');
+            console.log('  GET    /api/doctor/patient/:id  (verified doctor login required)');
+            console.log('  GET    /api/access-log          (patient login required)\n');
+        });
+
+        server.on('error', (error) => {
+            if (error.code === 'EADDRINUSE') {
+                console.error(`Port ${PORT} is already in use. Stop the other process or change PORT before restarting Life Link.`);
+                process.exit(1);
+            }
+
+            console.error('Server failed to start:', error);
+            process.exit(1);
+        });
+    } catch (err) {
+        console.error('Fatal initialization error:', err);
         process.exit(1);
     }
+}
 
-    console.error('Server failed to start:', error);
-    process.exit(1);
-});
+startServer();
