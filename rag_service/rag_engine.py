@@ -25,6 +25,24 @@ CANDIDATE_MODELS = [
     "gemini-flash-latest"
 ]
 
+def is_profile_or_health_query(query: str, retrieved_chunks: Optional[List[Dict[str, Any]]] = None) -> bool:
+    if retrieved_chunks and len(retrieved_chunks) > 0:
+        return True
+    if not query or not isinstance(query, str):
+        return False
+    q = query.lower().strip()
+    keywords = [
+        "health", "profile", "record", "medical", "doctor", "hospital", "patient",
+        "blood", "allergy", "allergies", "medication", "medicine", "pill", "dose",
+        "asthma", "condition", "surgery", "surgeries", "history", "emergency",
+        "symptom", "pain", "treatment", "diagnosis", "disease", "illness", "clinical",
+        "report", "lab", "test", "prescription", "drug", "care", "vaccine", "rx",
+        "allergic", "penicillin", "organ", "donor", "triage", "paramedic", "vital",
+        "first responder", "cholesterol", "lipid", "cardiac", "heart", "glucose", "sugar",
+        "scan", "mri", "x-ray", "ct", "biopsy", "infection", "fever", "cough"
+    ]
+    return any(k in q for k in keywords)
+
 def build_clinical_context(
     query: str,
     retrieved_chunks: List[Dict[str, Any]],
@@ -32,10 +50,11 @@ def build_clinical_context(
 ) -> str:
     """
     Constructs an augmented clinical context combining structured profile and retrieved report chunks.
+    Only includes structured health profile if query is health or record related.
     """
     sections: List[str] = []
 
-    if patient_profile:
+    if patient_profile and is_profile_or_health_query(query, retrieved_chunks):
         profile_lines = ["--- PATIENT CLINICAL PROFILE ---"]
         if patient_profile.get("blood_group"):
             profile_lines.append(f"Blood Group: {patient_profile['blood_group']}")
@@ -78,8 +97,9 @@ def _build_gemini_payload(
         "3. If retrieved medical reports or lab results are available and directly relevant to the query, cite the source file name and page number.\n"
         "4. If something is unknown or not documented in their records, clearly state so without fabricating facts.\n"
         "5. Maintain an objective, professional, and compassionate medical tone. Do not use emojis.\n"
-        "6. Always include a brief disclaimer for acute medical emergencies.\n"
-        "7. STRICT FORMATTING: NEVER enclose words, headings, or titles in double asterisks (**) or single asterisks (*). Do not use markdown bold or italic syntax. Write all section titles, numbers, and disclaimers in clean plain text (e.g. '1. Review Your Clinical Profile:' NEVER '1. **Review Your Clinical Profile:**', and 'Disclaimer: ...' NEVER '*Disclaimer:...*').\n\n"
+        "6. Medical Disclaimer: ONLY include a brief emergency disclaimer if the user's question or your response specifically discusses clinical diagnoses, medical symptoms, medication advice, or emergency treatment. DO NOT include any medical disclaimer for general inquiries, system/technical questions (such as databases, architecture, or software), weather, time, greetings, or non-medical tool queries.\n"
+        "7. STRICT FORMATTING: NEVER enclose words, headings, or titles in double asterisks (**) or single asterisks (*). Do not use markdown bold or italic syntax. Write all section titles, numbers, and disclaimers in clean plain text (e.g. '1. Review Your Clinical Profile:' NEVER '1. **Review Your Clinical Profile:**', and 'Disclaimer: ...' NEVER '*Disclaimer:...*').\n"
+        "8. LIVE PROFILE AS SOURCE OF TRUTH: The provided patient clinical profile represents the live, up-to-date state of the user's records. If the user recently edited, deleted, or cleared any records (such as removing allergies, medications, or conditions), the live profile ALWAYS supersedes any past statements in the earlier conversation history. If a condition, allergy, or medication was mentioned earlier in the chat but is no longer present in the clinical profile, consider it deleted/removed and state that it is no longer on file.\n\n"
         f"{context}"
     )
 
@@ -392,21 +412,28 @@ def synthesize_local_clinical_response(
             "Verified emergency teams can access these source documents directly during clinical care."
         )
     else:
-        # Fall back to profile records if no vector match found
-        blood = (profile or {}).get("blood_group", "Not recorded")
-        allergies = (profile or {}).get("allergies", "None documented")
-        meds = (profile or {}).get("current_medications", "None recorded")
-        conditions = (profile or {}).get("chronic_conditions", "None documented")
+        # If user asked about medical records or profile, summarize records
+        if is_profile_or_health_query(query):
+            blood = (profile or {}).get("blood_group", "Not recorded")
+            allergies = (profile or {}).get("allergies", "None documented")
+            meds = (profile or {}).get("current_medications", "None recorded")
+            conditions = (profile or {}).get("chronic_conditions", "None documented")
 
-        lines.append(f"Hello {name}, I reviewed your encrypted medical profile for: \"{query}\".")
-        lines.append(f"\n• Recorded Blood Group: {blood}")
-        lines.append(f"• Critical Allergies: {allergies}")
-        lines.append(f"• Active Medications: {meds}")
-        lines.append(f"• Chronic Conditions: {conditions}")
-        lines.append(
-            "\nNote: No specific lab document chunks matched this query in your document store. "
-            "You can upload your official PDF lab reports or discharge summaries in the Documents tab for deep AI search."
-        )
+            lines.append(f"Hello {name}, I reviewed your encrypted medical profile for: \"{query}\".")
+            lines.append(f"\n• Recorded Blood Group: {blood}")
+            lines.append(f"• Critical Allergies: {allergies}")
+            lines.append(f"• Active Medications: {meds}")
+            lines.append(f"• Chronic Conditions: {conditions}")
+            lines.append(
+                "\nNote: No specific lab document chunks matched this query in your document store. "
+                "You can upload your official PDF lab reports or discharge summaries in the Documents tab for deep AI search."
+            )
+        else:
+            lines.append(
+                f"Hello {name}. I am Life-Link AI, your personal clinical companion. "
+                "I can assist you with health questions, look up real-time weather and time, "
+                "and analyze your medical documents whenever you upload them."
+            )
 
     return {
         "answer": "\n".join(lines),

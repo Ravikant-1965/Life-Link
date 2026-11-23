@@ -30,8 +30,8 @@ function formatInlineMarkdown(text) {
         if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
             return <code key={i} style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontSize: '0.88em' }}>{part.slice(1, -1)}</code>;
         }
-        // In plain text, strip any stray double asterisks so "**" is NEVER shown to user
-        return part.replace(/\*\*/g, '');
+        // In plain text, strip any stray asterisks so raw asterisks are NEVER shown to user
+        return part.replace(/\*/g, '');
     });
 }
 
@@ -172,6 +172,25 @@ export function DashboardPage({ user, token, logout }) {
 
         fetchProfile();
     }, [logout, navigate, token, user]);
+
+    // Automatically re-sync live health profile when user focuses window/tab
+    useEffect(() => {
+        const handleWindowFocus = () => {
+            if (token) {
+                api.get('/api/profile', { headers: { Authorization: `Bearer ${token}` } })
+                    .then((res) => {
+                        if (res.data?.profile) {
+                            setProfile(res.data.profile);
+                            saveEmergencyCardOffline(res.data.profile, user);
+                        }
+                    })
+                    .catch(() => {});
+            }
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+        return () => window.removeEventListener('focus', handleWindowFocus);
+    }, [token, user]);
 
     // Fetch news articles when entering news section
     useEffect(() => {
@@ -414,15 +433,9 @@ export function DashboardPage({ user, token, logout }) {
                 return;
             }
 
-            // Offline or fallback response
-            let fallbackContent = `I have cross-referenced your offline health card:\n\n` +
-                `• Blood Group: ${profile?.blood_group || 'Not recorded'}\n` +
-                `• Documented Allergies: ${profile?.allergies || 'None documented'}\n` +
-                `• Active Medications: ${profile?.current_medications || 'None recorded'}\n\n` +
-                `Your encrypted Health ID is ${user?.healthId}. For acute emergencies, call local emergency services immediately.`;
-
-            botMessage.content = fallbackContent;
-            botMessage.referencedRecords = ['Offline Cached Medical Profile'];
+            // Service unavailable or connection error
+            botMessage.content = "I'm currently having trouble connecting to the Life-Link AI service. Please make sure the service is running and try again.";
+            botMessage.referencedRecords = [];
 
             setChats((prevChats) =>
                 prevChats.map((c) =>
@@ -832,11 +845,7 @@ export function DashboardPage({ user, token, logout }) {
                                                             Document Match ({msg.sources.length})
                                                         </span>
                                                     )}
-                                                    {msg.referencedRecords && msg.referencedRecords.length > 0 && (
-                                                        <span className="rag-grounded-pill health-profile-pill">
-                                                            Health Data ({msg.referencedRecords.length})
-                                                        </span>
-                                                    )}
+
                                                 </div>
 
                                                 {!msg.content ? (

@@ -708,11 +708,16 @@ function generateMedicalRagResponse(query, user, profile, referenced) {
     }
 
     // Default intelligent clinical assistant response
-    return `Hello ${name}, I have retrieved your medical context from your encrypted Health ID (${user?.health_id}).\n\n` +
-        `Regarding your question: "${query}"\n\n` +
-        `• Patient Record Status: Your profile has recorded Blood Group (${blood}), documented Allergies (${allergies}), and active Medications (${meds}).\n` +
-        `• Personalized Medical Advice: Please ensure that any symptoms or medication changes are evaluated by a licensed medical provider. I can help analyze your stored medical PDFs, medication images, or explain health news articles.\n\n` +
-        `Disclaimer: Life-Link is an intelligent medical record assistant and not a replacement for emergency diagnostic evaluation.`;
+    if (referenced && referenced.length > 0) {
+        return `Hello ${name}, I have reviewed your encrypted health records regarding "${query}".\n\n` +
+            `• Referenced Profile Data: ${referenced.join(', ')}.\n` +
+            `• Clinical Guidance: Please ensure any new symptoms or medication adjustments are evaluated by a licensed healthcare provider.\n\n` +
+            `Disclaimer: Life-Link is an intelligent medical assistant and not a replacement for emergency diagnostic evaluation.`;
+    }
+
+    return `Hello ${name}. I am Life-Link AI, your personal clinical companion.\n\n` +
+        `I can answer questions, review your health records and medications, look up current weather and time, and analyze your uploaded medical documents.\n\n` +
+        `How can I assist you today?`;
 }
 
 app.get('/api/news', (_req, res) => {
@@ -888,7 +893,7 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
             // 1.B Direct Gemini Flash Lite Streaming Fallback
             if (process.env.GEMINI_API_KEY) {
                 try {
-                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Provide clear, compassionate, medically sound guidance with emergency disclaimers when discussing acute symptoms. Do not use emojis.\n4. STRICT FORMATTING: NEVER use double asterisks (**) or single asterisks (*) anywhere. Do not enclose words or headings in asterisks. Write all text, headings, and disclaimers in clean plain text only.`;
+                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Medical Disclaimer: Only include a brief medical disclaimer if discussing clinical symptoms, medical advice, or treatments. Never include a medical disclaimer for technical, greeting, or non-medical questions. Do not use emojis.\n4. STRICT FORMATTING: NEVER use double asterisks (**) or single asterisks (*) anywhere. Do not enclose words or headings in asterisks. Write all text, headings, and disclaimers in clean plain text only.\n5. LIVE PROFILE AS SOURCE OF TRUTH: The provided patient profile represents the live up-to-date state. If records were recently removed or updated, the live profile overrides any earlier statements in the conversation history.`;
 
                     const contents = [];
                     if (Array.isArray(messages)) {
@@ -1008,7 +1013,7 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
         // Direct Google Gemini Fallback if Python microservice is offline
         if (!reply && process.env.GEMINI_API_KEY) {
             try {
-                const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Provide clear, compassionate, medically sound guidance with emergency disclaimers when discussing acute symptoms. Do not use emojis.`;
+                const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Medical Disclaimer: Only include a brief medical disclaimer if discussing clinical symptoms, medical advice, or treatments. Never include a medical disclaimer for technical, greeting, or non-medical questions. Do not use emojis.\n4. STRICT FORMATTING: NEVER use double asterisks (**) or single asterisks (*) anywhere. Do not enclose words or headings in asterisks. Write all text, headings, and disclaimers in clean plain text only.\n5. LIVE PROFILE AS SOURCE OF TRUTH: The provided patient profile represents the live up-to-date state. If records were recently removed or updated, the live profile overrides any earlier statements in the conversation history.`;
 
                 const contents = [];
                 if (Array.isArray(messages)) {
