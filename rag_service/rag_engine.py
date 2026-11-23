@@ -1,7 +1,16 @@
 # rag_service/rag_engine.py - Stage 5: Grounded Clinical Generation & Citations (Python)
 import httpx
-from typing import List, Dict, Any, Optional
+import json
+import asyncio
+from typing import List, Dict, Any, Optional, AsyncGenerator
 from config import GEMINI_API_KEY
+
+CANDIDATE_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-3.8-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-flash-latest"
+]
 
 def build_clinical_context(
     query: str,
@@ -41,14 +50,60 @@ def build_clinical_context(
 
     return "\n\n".join(sections)
 
+def _build_gemini_payload(
+    query: str,
+    context: str,
+    patient_name: str,
+    history: Optional[List[Dict[str, Any]]] = None
+) -> Dict[str, Any]:
+    system_prompt = (
+        "You are Life Link AI, an intelligent, empathetic medical assistant and clinical records companion.\n"
+        f"You are speaking with {patient_name}.\n\n"
+        "Guidelines:\n"
+        "1. Ground your answers in the patient's verified health records and clinical profile provided in context.\n"
+        "2. If retrieved medical reports or lab results are available, cite the source file name and page number.\n"
+        "3. If the user asks general medical, health, or wellness questions, answer accurately, clearly, and concisely in natural language like a top medical expert.\n"
+        "4. If something is unknown or not documented in their records, clearly state so without fabricating facts.\n"
+        "5. Maintain an objective, professional, and compassionate medical tone. Do not use emojis.\n"
+        "6. Always include a brief disclaimer for acute medical emergencies (e.g. advising them to call emergency services or visit the ER if symptoms are severe).\n\n"
+        f"{context}"
+    )
+
+    contents = []
+    if history and isinstance(history, list):
+        recent_turns = history[-6:]
+        for msg in recent_turns:
+            role = "user" if msg.get("role") in ["user", "patient"] else "model"
+            text = msg.get("text") or msg.get("content") or msg.get("message") or ""
+            if text.strip():
+                if contents and contents[-1]["role"] == role:
+                    contents[-1]["parts"][0]["text"] += f"\n{text.strip()}"
+                else:
+                    contents.append({"role": role, "parts": [{"text": text.strip()}]})
+
+    if contents and contents[-1]["role"] == "user":
+        contents[-1]["parts"][0]["text"] += f"\n{query.strip()}"
+    else:
+        contents.append({"role": "user", "parts": [{"text": query.strip()}]})
+
+    return {
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": contents,
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": 800
+        }
+    }
+
 async def generate_rag_answer(
     query: str,
     retrieved_chunks: List[Dict[str, Any]],
     patient_profile: Optional[Dict[str, Any]] = None,
-    patient_name: str = "Patient"
+    patient_name: str = "Patient",
+    history: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
-    Synthesizes retrieved chunks and profile into a clinical response with strict citations.
+    Synthesizes retrieved chunks, clinical profile, and multi-turn dialog into an LLM response with citations.
     """
     context = build_clinical_context(query, retrieved_chunks, patient_profile)
     sources = [
@@ -63,41 +118,124 @@ async def generate_rag_answer(
         for c in retrieved_chunks
     ]
 
-    # If Gemini API key is available, call Gemini free API
     if GEMINI_API_KEY:
-        try:
-            prompt = (
-                f"You are Life-Link Clinical Assistant, an intelligent medical records assistant.\n"
-                f"Answer the patient's question based strictly on the provided medical records and profile.\n"
-                f"Ground your answer only in the facts below. If information is not documented, clearly state so.\n"
-                f"Always cite the source document name and page number when quoting findings.\n"
-                f"Maintain a professional, objective medical tone. Do not use any emojis or emoticons.\n\n"
-                f"{context}\n\n"
-                f"Patient Question: {query}\n\n"
-                f"Assistant Answer:"
-            )
+        payload = _build_gemini_payload(query, context, patient_name, history)
+        for model in CANDIDATE_MODELS:
+            try:
+                async with httpx.AsyncClient(timeout=16.0) as client:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates and "content" in candidates[0]:
+                            parts = candidates[0]["content"].get("parts", [])
+                            if parts and "text" in parts[0]:
+                                answer = parts[0]["text"].strip()
+                                return {
+                                    "answer": answer,
+                                    "sources": sources,
+                                    "grounded": len(retrieved_chunks) > 0,
+                                    "engine": f"google-{model}"
+                                }
+                    else:
+                        print(f"[RAG Engine] Model {model} status {res.status_code}: {res.text[:100]}")
+            except Exception as api_err:
+                print(f"[RAG Engine] Error calling {model}: {api_err}")
 
-            async with httpx.AsyncClient(timeout=25.0) as client:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 600}
-                }
-                res = await client.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    answer = data["candidates"][0]["content"]["parts"][0]["text"]
-                    return {
-                        "answer": answer.strip(),
-                        "sources": sources,
-                        "grounded": len(retrieved_chunks) > 0,
-                        "engine": "gemini-3.8-flash"
-                    }
-        except Exception as api_err:
-            print(f"[RAG Engine] Gemini API call error: {api_err}, falling back to local clinical synthesis.")
-
-    # Local Clinical Synthesis Engine (100% Free, Zero API Key Required)
+    # Local Clinical Synthesis Engine fallback
     return synthesize_local_clinical_response(query, retrieved_chunks, patient_profile, patient_name, sources)
+
+async def stream_rag_answer(
+    query: str,
+    retrieved_chunks: List[Dict[str, Any]],
+    patient_profile: Optional[Dict[str, Any]] = None,
+    patient_name: str = "Patient",
+    history: Optional[List[Dict[str, Any]]] = None
+) -> AsyncGenerator[str, None]:
+    """
+    Streams RAG response chunk by chunk as Server-Sent Events (SSE).
+    Also prints tokens to console in real time with flush=True.
+    """
+    context = build_clinical_context(query, retrieved_chunks, patient_profile)
+    sources = [
+        {
+            "chunk_id": c.get("chunk_id"),
+            "file_name": c.get("file_name"),
+            "page_number": c.get("page_number"),
+            "category": c.get("category"),
+            "similarity": c.get("similarity"),
+            "excerpt": c.get("text")[:180] + "..." if len(c.get("text", "")) > 180 else c.get("text")
+        }
+        for c in retrieved_chunks
+    ]
+
+    payload = _build_gemini_payload(query, context, patient_name, history)
+
+    if GEMINI_API_KEY:
+        for model in CANDIDATE_MODELS:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={GEMINI_API_KEY}"
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    async with client.stream("POST", url, json=payload) as response:
+                        if response.status_code == 200:
+                            # Send metadata event first
+                            metadata = {
+                                "type": "metadata",
+                                "sources": sources,
+                                "engine": f"google-{model}",
+                                "grounded": len(retrieved_chunks) > 0
+                            }
+                            yield f"data: {json.dumps(metadata)}\n\n"
+
+                            print(f"\n[Life Link AI Stream ({model})]: ", end="", flush=True)
+
+                            async for line in response.aiter_lines():
+                                if line.startswith("data: "):
+                                    raw = line[6:].strip()
+                                    if not raw:
+                                        continue
+                                    try:
+                                        d = json.loads(raw)
+                                        candidates = d.get("candidates", [])
+                                        if candidates:
+                                            parts = candidates[0].get("content", {}).get("parts", [])
+                                            for part in parts:
+                                                txt = part.get("text", "")
+                                                if txt:
+                                                    print(txt, end="", flush=True)
+                                                    yield f"data: {json.dumps({'type': 'token', 'text': txt})}\n\n"
+                                    except Exception:
+                                        continue
+
+                            print("\n", flush=True)
+                            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                            return
+                        else:
+                            print(f"[RAG Stream] Model {model} status {response.status_code}", flush=True)
+            except Exception as stream_err:
+                print(f"[RAG Stream Error {model}]: {stream_err}", flush=True)
+
+    # Fallback to local clinical synthesis if stream failed or no API key
+    local_res = synthesize_local_clinical_response(query, retrieved_chunks, patient_profile, patient_name, sources)
+    metadata = {
+        "type": "metadata",
+        "sources": sources,
+        "engine": "local-clinical-synthesis",
+        "grounded": len(retrieved_chunks) > 0
+    }
+    yield f"data: {json.dumps(metadata)}\n\n"
+
+    print("\n[Life Link AI Local Fallback Stream]: ", end="", flush=True)
+    words = local_res["answer"].split(" ")
+    for idx, word in enumerate(words):
+        token = word + (" " if idx < len(words) - 1 else "")
+        print(token, end="", flush=True)
+        yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
+        await asyncio.sleep(0.015)
+
+    print("\n", flush=True)
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
 def synthesize_local_clinical_response(
     query: str,

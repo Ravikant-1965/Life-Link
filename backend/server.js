@@ -783,7 +783,7 @@ app.get('/api/news', (_req, res) => {
 });
 
 app.post('/api/chat', checkPatientAuth, async (req, res) => {
-    const { message } = req.body;
+    const { message, messages, stream } = req.body;
     if (!message || typeof message !== 'string') {
         return res.status(400).send({ message: 'A prompt message is required.' });
     }
@@ -804,6 +804,139 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
         if (profile?.medication_images?.length) referencedRecords.push(`${profile.medication_images.length} Medication Photo(s)`);
         if (profile?.medical_file_links?.length) referencedRecords.push(`${profile.medical_file_links.length} Medical File Link(s)`);
 
+        // ==========================================
+        // 1. STREAMING MODE (Server-Sent Events)
+        // ==========================================
+        if (stream === true) {
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            if (res.flushHeaders) res.flushHeaders();
+
+            // Send initial referenced records event
+            res.write(`data: ${JSON.stringify({ type: 'referencedRecords', referencedRecords })}\n\n`);
+
+            // 1.A Try Python RAG microservice streaming endpoint
+            try {
+                const pythonStreamRes = await fetch('http://127.0.0.1:8000/chat/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: message,
+                        health_id: user?.health_id,
+                        patient_name: user?.name || 'Patient',
+                        patient_profile: profile,
+                        top_k: 4,
+                        history: Array.isArray(messages) ? messages : []
+                    }),
+                    signal: AbortSignal.timeout(30000)
+                });
+
+                if (pythonStreamRes.ok && pythonStreamRes.body) {
+                    const reader = pythonStreamRes.body.getReader();
+                    const decoder = new TextDecoder();
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        res.write(chunk);
+                    }
+                    return res.end();
+                }
+            } catch (_pyStreamErr) {
+                // Python microservice offline or error, fall through to direct Gemini stream
+            }
+
+            // 1.B Direct Gemini Flash Lite Streaming Fallback
+            if (process.env.GEMINI_API_KEY) {
+                try {
+                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nDocumented Health Profile:\n- Blood Group: ${profile?.blood_group || 'Not recorded'}\n- Allergies: ${profile?.allergies || 'None documented'}\n- Medications: ${profile?.current_medications || 'None recorded'}\n- Chronic Conditions: ${profile?.chronic_conditions || 'None documented'}\n- Surgeries: ${profile?.previous_surgeries || 'None documented'}\nProvide clear, compassionate, medically sound guidance. Include a standard emergency disclaimer when discussing acute symptoms. Do not use emojis.`;
+
+                    const contents = [];
+                    if (Array.isArray(messages)) {
+                        const recent = messages.slice(-6);
+                        for (const m of recent) {
+                            const role = m.role === 'user' || m.role === 'patient' ? 'user' : 'model';
+                            const text = (m.text || m.content || m.message || '').trim();
+                            if (text) {
+                                if (contents.length && contents[contents.length - 1].role === role) {
+                                    contents[contents.length - 1].parts[0].text += `\n${text}`;
+                                } else {
+                                    contents.push({ role, parts: [{ text }] });
+                                }
+                            }
+                        }
+                    }
+                    if (contents.length && contents[contents.length - 1].role === 'user') {
+                        contents[contents.length - 1].parts[0].text += `\n${message.trim()}`;
+                    } else {
+                        contents.push({ role: 'user', parts: [{ text: message.trim() }] });
+                    }
+
+                    const geminiStreamRes = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:streamGenerateContent?alt=sse&key=${process.env.GEMINI_API_KEY}`,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                systemInstruction: { parts: [{ text: systemPrompt }] },
+                                contents,
+                                generationConfig: { temperature: 0.3, maxOutputTokens: 800 }
+                            }),
+                            signal: AbortSignal.timeout(30000)
+                        }
+                    );
+
+                    if (geminiStreamRes.ok && geminiStreamRes.body) {
+                        res.write(`data: ${JSON.stringify({ type: 'metadata', sources: [], engine: 'google-gemini-flash-lite-direct', grounded: false })}\n\n`);
+                        const reader = geminiStreamRes.body.getReader();
+                        const decoder = new TextDecoder();
+                        let buffer = '';
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            buffer += decoder.decode(value, { stream: true });
+                            const lines = buffer.split('\n');
+                            buffer = lines.pop() || '';
+                            for (const line of lines) {
+                                if (line.startsWith('data: ')) {
+                                    const raw = line.slice(6).trim();
+                                    if (raw) {
+                                        try {
+                                            const parsed = JSON.parse(raw);
+                                            const txt = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+                                            if (txt) {
+                                                res.write(`data: ${JSON.stringify({ type: 'token', text: txt })}\n\n`);
+                                            }
+                                        } catch (_) {}
+                                    }
+                                }
+                            }
+                        }
+                        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+                        return res.end();
+                    }
+                } catch (_gStreamErr) {
+                    // Fall back to local streamed response
+                }
+            }
+
+            // 1.C Local Streaming Fallback
+            const localFallback = generateMedicalRagResponse(message, user, profile, referencedRecords);
+            res.write(`data: ${JSON.stringify({ type: 'metadata', sources: [], engine: 'fallback-local', grounded: false })}\n\n`);
+            const words = localFallback.split(' ');
+            for (let i = 0; i < words.length; i++) {
+                const word = words[i] + (i < words.length - 1 ? ' ' : '');
+                res.write(`data: ${JSON.stringify({ type: 'token', text: word })}\n\n`);
+                await new Promise((resolve) => setTimeout(resolve, 15));
+            }
+            res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+            return res.end();
+        }
+
+        // ==========================================
+        // 2. STANDARD NON-STREAMING JSON MODE
+        // ==========================================
         let reply = '';
         let sources = [];
         let engine = 'fallback-local';
@@ -818,7 +951,8 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
                     health_id: user?.health_id,
                     patient_name: user?.name || 'Patient',
                     patient_profile: profile,
-                    top_k: 4
+                    top_k: 4,
+                    history: Array.isArray(messages) ? messages : []
                 }),
                 signal: AbortSignal.timeout(15000)
             });
@@ -831,6 +965,58 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
             }
         } catch (_pyErr) {
             // Python service offline or timeout; gracefully fall back
+        }
+
+        // Direct Google Gemini Fallback if Python microservice is offline
+        if (!reply && process.env.GEMINI_API_KEY) {
+            try {
+                const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nDocumented Health Profile:\n- Blood Group: ${profile?.blood_group || 'Not recorded'}\n- Allergies: ${profile?.allergies || 'None documented'}\n- Medications: ${profile?.current_medications || 'None recorded'}\n- Chronic Conditions: ${profile?.chronic_conditions || 'None documented'}\n- Surgeries: ${profile?.previous_surgeries || 'None documented'}\nProvide clear, compassionate, medically sound guidance. Include a standard emergency disclaimer when discussing acute symptoms. Do not use emojis.`;
+
+                const contents = [];
+                if (Array.isArray(messages)) {
+                    const recent = messages.slice(-6);
+                    for (const m of recent) {
+                        const role = m.role === 'user' || m.role === 'patient' ? 'user' : 'model';
+                        const text = (m.text || m.content || m.message || '').trim();
+                        if (text) {
+                            if (contents.length && contents[contents.length - 1].role === role) {
+                                contents[contents.length - 1].parts[0].text += `\n${text}`;
+                            } else {
+                                contents.push({ role, parts: [{ text }] });
+                            }
+                        }
+                    }
+                }
+                if (contents.length && contents[contents.length - 1].role === 'user') {
+                    contents[contents.length - 1].parts[0].text += `\n${message.trim()}`;
+                } else {
+                    contents.push({ role: 'user', parts: [{ text: message.trim() }] });
+                }
+
+                const geminiRes = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            contents,
+                            generationConfig: { temperature: 0.3, maxOutputTokens: 800 }
+                        }),
+                        signal: AbortSignal.timeout(12000)
+                    }
+                );
+
+                if (geminiRes.ok) {
+                    const gData = await geminiRes.json();
+                    reply = gData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+                    if (reply) {
+                        engine = 'google-gemini-flash-lite-direct';
+                    }
+                }
+            } catch (_gErr) {
+                // Graceful fallback to local rule-based response
+            }
         }
 
         if (!reply) {

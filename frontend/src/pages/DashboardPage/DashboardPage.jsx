@@ -241,39 +241,98 @@ export function DashboardPage({ user, token, logout }) {
 
         const updatedMessagesWithUser = [...currentChat.messages, userMessage];
 
+        const botMessageId = `bot-${Date.now()}`;
+        const botMessage = {
+            id: botMessageId,
+            role: 'assistant',
+            content: '',
+            referencedRecords: [],
+            sources: [],
+            engine: '',
+            timestamp: new Date().toISOString()
+        };
+
+        const messagesWithBot = [...updatedMessagesWithUser, botMessage];
+
         setChats((prevChats) =>
             prevChats.map((c) =>
                 c.id === currentChat.id
-                    ? { ...c, title: updatedTitle, messages: updatedMessagesWithUser }
+                    ? { ...c, title: updatedTitle, messages: messagesWithBot }
                     : c
             )
         );
 
         setIsSending(true);
 
+        const apiUrl = `${(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')}/api/chat`;
+
         try {
-            const res = await api.post(
-                '/api/chat',
-                { message: query },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    message: query,
+                    messages: updatedMessagesWithUser.map((m) => ({
+                        role: m.role,
+                        content: m.content
+                    })),
+                    stream: true
+                })
+            });
 
-            const botMessage = {
-                role: 'assistant',
-                content: res.data.reply,
-                referencedRecords: res.data.referencedRecords || [],
-                sources: res.data.sources || [],
-                engine: res.data.engine || 'local',
-                timestamp: res.data.timestamp || new Date().toISOString()
-            };
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
 
-            setChats((prevChats) =>
-                prevChats.map((c) =>
-                    c.id === currentChat.id
-                        ? { ...c, messages: [...updatedMessagesWithUser, botMessage] }
-                        : c
-                )
-            );
+            if (response.body) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const rawJson = line.slice(6).trim();
+                            if (!rawJson) continue;
+
+                            try {
+                                const event = JSON.parse(rawJson);
+                                if (event.type === 'token' && event.text) {
+                                    botMessage.content += event.text;
+                                } else if (event.type === 'metadata') {
+                                    if (event.sources) botMessage.sources = event.sources;
+                                    if (event.engine) botMessage.engine = event.engine;
+                                } else if (event.type === 'referencedRecords' && event.referencedRecords) {
+                                    botMessage.referencedRecords = event.referencedRecords;
+                                }
+
+                                // Update current bot message in chat state in real-time
+                                setChats((prevChats) =>
+                                    prevChats.map((c) => {
+                                        if (c.id !== currentChat.id) return c;
+                                        return {
+                                            ...c,
+                                            messages: c.messages.map((m) =>
+                                                m.id === botMessageId ? { ...botMessage } : m
+                                            )
+                                        };
+                                    })
+                                );
+                            } catch (_) {}
+                        }
+                    }
+                }
+            }
         } catch (err) {
             // Offline or fallback response
             let fallbackContent = `I have cross-referenced your offline health card:\n\n` +
@@ -282,17 +341,18 @@ export function DashboardPage({ user, token, logout }) {
                 `• **Active Medications**: ${profile?.current_medications || 'None recorded'}\n\n` +
                 `Your encrypted Health ID is **${user?.healthId}**. For acute emergencies, call local emergency services immediately.`;
 
-            const fallbackBotMessage = {
-                role: 'assistant',
-                content: fallbackContent,
-                referencedRecords: ['Offline Cached Medical Profile'],
-                timestamp: new Date().toISOString()
-            };
+            botMessage.content = fallbackContent;
+            botMessage.referencedRecords = ['Offline Cached Medical Profile'];
 
             setChats((prevChats) =>
                 prevChats.map((c) =>
                     c.id === currentChat.id
-                        ? { ...c, messages: [...updatedMessagesWithUser, fallbackBotMessage] }
+                        ? {
+                            ...c,
+                            messages: c.messages.map((m) =>
+                                m.id === botMessageId ? { ...botMessage } : m
+                            )
+                        }
                         : c
                 )
             );
@@ -693,18 +753,27 @@ export function DashboardPage({ user, token, logout }) {
                                                     )}
                                                 </div>
 
-                                                <div className="message-text">
-                                                    {msg.content.split('\n\n').map((para, pIdx) => (
-                                                        <p key={pIdx}>
-                                                            {para.split('\n').map((line, lIdx) => (
-                                                                <span key={lIdx}>
-                                                                    {line}
-                                                                    {lIdx < para.split('\n').length - 1 && <br />}
-                                                                </span>
-                                                            ))}
-                                                        </p>
-                                                    ))}
-                                                </div>
+                                                {!msg.content ? (
+                                                    <div className="typing-indicator" style={{ padding: '6px 0' }}>
+                                                        <span className="dot" />
+                                                        <span className="dot" />
+                                                        <span className="dot" />
+                                                        <span className="typing-text">Connecting to medical profile vectors...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="message-text">
+                                                        {msg.content.split('\n\n').map((para, pIdx) => (
+                                                            <p key={pIdx}>
+                                                                {para.split('\n').map((line, lIdx) => (
+                                                                    <span key={lIdx}>
+                                                                        {line}
+                                                                        {lIdx < para.split('\n').length - 1 && <br />}
+                                                                    </span>
+                                                                ))}
+                                                            </p>
+                                                        ))}
+                                                    </div>
+                                                )}
 
                                                 {/* Referenced records chips */}
                                                 {msg.referencedRecords && msg.referencedRecords.length > 0 && (
@@ -738,22 +807,6 @@ export function DashboardPage({ user, token, logout }) {
                                             </div>
                                         </div>
                                     ))}
-
-                                    {isSending && (
-                                        <div className="chat-message-row message-assistant">
-                                            <div className="message-avatar">
-                                                <img src="/logo_cross.png" alt="AI" className="message-ai-avatar-img" />
-                                            </div>
-                                            <div className="message-content-wrapper">
-                                                <div className="typing-indicator">
-                                                    <span className="dot" />
-                                                    <span className="dot" />
-                                                    <span className="dot" />
-                                                    <span className="typing-text">Cross-referencing medical profile vectors...</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div ref={chatEndRef} />
                                 </div>

@@ -105,24 +105,6 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
         }
     ];
 
-    const scrollToCard = (index) => {
-        const slots = document.querySelectorAll('.testimonial-slide-slot');
-        if (slots[index]) {
-            const navOffset = window.innerWidth <= 768 ? 72 : (window.innerWidth <= 960 ? 88 : 96);
-            const targetY = slots[index].offsetTop - navOffset;
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
-        }
-    };
-
-    const scrollToFaqs = () => {
-        const faqsEl = document.getElementById('faqs');
-        if (faqsEl) {
-            const navOffset = window.innerWidth <= 768 ? 64 : 80;
-            const targetY = faqsEl.offsetTop - navOffset;
-            window.scrollTo({ top: targetY, behavior: 'smooth' });
-        }
-    };
-
     const faqs = [
         {
             question: "1. Do you support insurance?",
@@ -387,25 +369,6 @@ export function LandingPage({ user, doctor, logout, logoutDoctor }) {
                             <div className="testimonial-card-box">
                                 <div className="testimonial-box-topbar">
                                     <span className="testimonial-story-pill">Story {index + 1} of {testimonials.length}</span>
-                                    {index < testimonials.length - 1 ? (
-                                        <button 
-                                            type="button"
-                                            className="testimonial-scroll-hint-btn"
-                                            onClick={() => scrollToCard(index + 1)}
-                                            aria-label="Scroll to next testimonial"
-                                        >
-                                            Scroll Down for next testimonial ↓
-                                        </button>
-                                    ) : (
-                                        <button 
-                                            type="button"
-                                            className="testimonial-scroll-hint-btn complete"
-                                            onClick={scrollToFaqs}
-                                            aria-label="Scroll to FAQs"
-                                        >
-                                            Next: FAQs ↓
-                                        </button>
-                                    )}
                                 </div>
 
                                 <div className="testimonial-card-grid">

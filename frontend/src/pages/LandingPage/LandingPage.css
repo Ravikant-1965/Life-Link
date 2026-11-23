@@ -40,14 +40,14 @@
   font-size: 22px;
   font-weight: 800;
   color: #ffffff;
-  background-color: #059669;
-  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+  background-color: #018ABE;
+  box-shadow: 0 4px 10px rgba(1, 138, 190, 0.25);
 }
 
 .logo-text {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #059669;
+  color: #018ABE;
   letter-spacing: -0.01em;
 }
 
@@ -140,9 +140,9 @@
   gap: 8px;
   padding: 8px 16px;
   border-radius: 999px;
-  background-color: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #059669;
+  background-color: #e6f4f9;
+  border: 1px solid #b3e0f2;
+  color: #018ABE;
   font-size: 0.9rem;
   font-weight: 700;
   margin-bottom: 20px;
@@ -159,7 +159,7 @@
 
 .hero-highlight {
   display: block;
-  color: #059669;
+  color: #018ABE;
 }
 
 .hero-motto-wrapper {
@@ -235,26 +235,26 @@
 
 .hero-btn-primary {
   color: #ffffff;
-  background-color: #059669;
-  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.24);
+  background-color: #018ABE;
+  box-shadow: 0 6px 16px rgba(1, 138, 190, 0.22);
 }
 
 .hero-btn-primary:hover {
-  background-color: #047857;
-  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.32);
+  background-color: #016f99;
+  box-shadow: 0 8px 20px rgba(1, 138, 190, 0.3);
   transform: translateY(-1px);
 }
 
 .hero-btn-secondary {
-  color: #059669;
+  color: #018ABE;
   background-color: #ffffff;
-  border: 2px solid #059669;
+  border: 2px solid #018ABE;
 }
 
 .hero-btn-secondary:hover {
-  background-color: #ecfdf5;
-  color: #047857;
-  border-color: #047857;
+  background-color: #e6f4f9;
+  color: #016f99;
+  border-color: #016f99;
   transform: translateY(-1px);
 }
 
@@ -848,40 +848,6 @@
   letter-spacing: 0.05em;
 }
 
-.testimonial-scroll-hint-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background-color: #f1f5f9;
-  border: 1px solid #cbd5e1;
-  color: #475569;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.testimonial-scroll-hint-btn:hover {
-  background-color: #018ABE;
-  border-color: #018ABE;
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.testimonial-scroll-hint-btn.complete {
-  background-color: #e6f4f9;
-  border-color: #b3e0f2;
-  color: #018ABE;
-}
-
-.testimonial-scroll-hint-btn.complete:hover {
-  background-color: #018ABE;
-  border-color: #018ABE;
-  color: #ffffff;
-}
 
 .testimonial-card-grid {
   display: grid;
@@ -1537,7 +1503,7 @@
 
   .hero-highlight {
     display: inline;
-    color: #059669;
+    color: #018ABE;
   }
 
   .hero-motto-wrapper {
@@ -1811,10 +1777,6 @@
     padding: 4px 10px;
   }
 
-  .testimonial-scroll-hint-btn {
-    font-size: 0.74rem;
-    padding: 4px 10px;
-  }
 
   .testimonial-card-grid {
     grid-template-columns: 1fr;

@@ -2,6 +2,7 @@
 import os
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -9,7 +10,7 @@ from config import HOST, PORT
 from document_loader import extract_text_from_bytes, clean_medical_text
 from text_splitter import split_document_pages, split_raw_text, get_chunk_summary
 from vector_store import vector_store
-from rag_engine import generate_rag_answer
+from rag_engine import generate_rag_answer, stream_rag_answer
 
 app = FastAPI(
     title="LifeLink Python RAG Medical Service",
@@ -60,6 +61,7 @@ class ChatRequest(BaseModel):
     top_k: int = 4
     category: Optional[str] = None
     min_similarity: Optional[float] = 0.0
+    history: Optional[List[Dict[str, Any]]] = None
 
 @app.get("/")
 def root():
@@ -239,7 +241,8 @@ async def chat_rag(req: ChatRequest):
         query=req.query,
         retrieved_chunks=chunks,
         patient_profile=req.patient_profile,
-        patient_name=req.patient_name
+        patient_name=req.patient_name,
+        history=req.history
     )
 
     return {
@@ -250,6 +253,30 @@ async def chat_rag(req: ChatRequest):
         "engine": response["engine"],
         "grounded": response["grounded"]
     }
+
+@app.post("/chat/stream")
+async def chat_rag_stream(req: ChatRequest):
+    """
+    Real-time streaming RAG Chat using Server-Sent Events (SSE).
+    """
+    chunks = vector_store.search_chunks(
+        query=req.query,
+        health_id=req.health_id,
+        top_k=req.top_k,
+        category=req.category,
+        min_similarity=req.min_similarity or 0.0
+    )
+
+    return StreamingResponse(
+        stream_rag_answer(
+            query=req.query,
+            retrieved_chunks=chunks,
+            patient_profile=req.patient_profile,
+            patient_name=req.patient_name,
+            history=req.history
+        ),
+        media_type="text/event-stream"
+    )
 
 if __name__ == "__main__":
     import uvicorn
