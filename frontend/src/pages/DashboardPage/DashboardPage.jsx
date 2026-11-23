@@ -13,6 +13,25 @@ import { HealthDataModal } from './HealthDataModal';
 import { SettingsModal } from './SettingsModal';
 import './DashboardPage.css';
 
+// Formats inline markdown tokens: **bold**, *italic*, `code`
+function formatInlineMarkdown(text) {
+    if (!text || typeof text !== 'string') return text;
+    const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
+    const parts = text.split(regex);
+    return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+            return <strong key={i} style={{ fontWeight: 700, color: '#0f172a' }}>{part.slice(2, -2)}</strong>;
+        }
+        if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
+            return <em key={i} style={{ fontStyle: 'italic', color: '#475569' }}>{part.slice(1, -1)}</em>;
+        }
+        if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+            return <code key={i} style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontSize: '0.88em' }}>{part.slice(1, -1)}</code>;
+        }
+        return part;
+    });
+}
+
 export function DashboardPage({ user, token, logout }) {
     // Navigation / auth check
     const navigate = useNavigate();
@@ -746,9 +765,14 @@ export function DashboardPage({ user, token, logout }) {
                                                     <span className="message-author-name">
                                                         {msg.role === 'user' ? user.name : 'Life-Link'}
                                                     </span>
-                                                    {msg.referencedRecords && msg.referencedRecords.length > 0 && (
+                                                    {msg.sources && msg.sources.length > 0 && (
                                                         <span className="rag-grounded-pill">
-                                                            RAG Vector Context ({msg.referencedRecords.length})
+                                                            Document Match ({msg.sources.length})
+                                                        </span>
+                                                    )}
+                                                    {msg.referencedRecords && msg.referencedRecords.length > 0 && (
+                                                        <span className="rag-grounded-pill health-profile-pill">
+                                                            Health Data ({msg.referencedRecords.length})
                                                         </span>
                                                     )}
                                                 </div>
@@ -766,7 +790,7 @@ export function DashboardPage({ user, token, logout }) {
                                                             <p key={pIdx}>
                                                                 {para.split('\n').map((line, lIdx) => (
                                                                     <span key={lIdx}>
-                                                                        {line}
+                                                                        {formatInlineMarkdown(line)}
                                                                         {lIdx < para.split('\n').length - 1 && <br />}
                                                                     </span>
                                                                 ))}

@@ -782,6 +782,51 @@ app.get('/api/news', (_req, res) => {
     res.send({ articles: newsArticles });
 });
 
+function getRelevantReferencedRecords(query = '', profile = {}) {
+    if (!profile) return [];
+    const q = query.toLowerCase();
+    const relevant = [];
+
+    // General queries asking to review, inspect, or summarize the user's records
+    const isProfileQuery = /(my|my own|check|review|summarize|show|list)\s+(profile|record|history|health|data|detail|card|info|chart|file)/i.test(q)
+        || /(emergency summary|first responder|about me|who am i)/i.test(q);
+
+    // Blood group
+    if (profile.blood_group && (isProfileQuery || /(blood|transfus|donor|plasma|rh|rhesus|type a|type b|type o|type ab|o\+|o-|a\+|a-|b\+|b-|ab\+|ab-)/i.test(q))) {
+        relevant.push(`Blood Group (${profile.blood_group})`);
+    }
+
+    // Allergies
+    if (profile.allergies && (isProfileQuery || /(allerg|penicillin|reaction|anaphyla|histamine|contraindicat|allergen)/i.test(q))) {
+        relevant.push(`Allergies: ${profile.allergies}`);
+    }
+
+    // Chronic conditions
+    if (profile.chronic_conditions && (isProfileQuery || /(chronic|condition|asthma|diabet|hypertens|illness|disease|epilep)/i.test(q))) {
+        relevant.push(`Conditions: ${profile.chronic_conditions}`);
+    }
+
+    // Current medications
+    if (profile.current_medications && (isProfileQuery || /(medic|drug|prescript|dose|dosage|inhaler|pill|tablet|salbutamol|metformin)/i.test(q))) {
+        relevant.push(`Medications: ${profile.current_medications}`);
+    }
+
+    // Previous surgeries
+    if (profile.previous_surgeries && (isProfileQuery || /(surger|operat|procedure|cesarean|appendix|surgical)/i.test(q))) {
+        relevant.push(`Surgeries: ${profile.previous_surgeries}`);
+    }
+
+    // Document & medication images/files
+    if (profile.document_images?.length && /(scan|document|pdf|lab result|report image|x-ray|mri)/i.test(q)) {
+        relevant.push(`${profile.document_images.length} Document Image(s)`);
+    }
+    if (profile.medication_images?.length && /(medication photo|prescription photo|pill photo)/i.test(q)) {
+        relevant.push(`${profile.medication_images.length} Medication Photo(s)`);
+    }
+
+    return relevant;
+}
+
 app.post('/api/chat', checkPatientAuth, async (req, res) => {
     const { message, messages, stream } = req.body;
     if (!message || typeof message !== 'string') {
@@ -794,15 +839,8 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
         const rawProfile = await db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(req.userId);
         const profile = formatProfile(rawProfile);
 
-        const referencedRecords = [];
-        if (profile?.blood_group) referencedRecords.push(`Blood Group (${profile.blood_group})`);
-        if (profile?.allergies) referencedRecords.push(`Allergies: ${profile.allergies}`);
-        if (profile?.chronic_conditions) referencedRecords.push(`Conditions: ${profile.chronic_conditions}`);
-        if (profile?.current_medications) referencedRecords.push(`Medications: ${profile.current_medications}`);
-        if (profile?.previous_surgeries) referencedRecords.push(`Surgeries: ${profile.previous_surgeries}`);
-        if (profile?.document_images?.length) referencedRecords.push(`${profile.document_images.length} Document Image(s)`);
-        if (profile?.medication_images?.length) referencedRecords.push(`${profile.medication_images.length} Medication Photo(s)`);
-        if (profile?.medical_file_links?.length) referencedRecords.push(`${profile.medical_file_links.length} Medical File Link(s)`);
+        // Only reference personal health records when query is relevant to medical history/profile
+        const referencedRecords = getRelevantReferencedRecords(message, profile);
 
         // ==========================================
         // 1. STREAMING MODE (Server-Sent Events)
@@ -850,7 +888,7 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
             // 1.B Direct Gemini Flash Lite Streaming Fallback
             if (process.env.GEMINI_API_KEY) {
                 try {
-                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nDocumented Health Profile:\n- Blood Group: ${profile?.blood_group || 'Not recorded'}\n- Allergies: ${profile?.allergies || 'None documented'}\n- Medications: ${profile?.current_medications || 'None recorded'}\n- Chronic Conditions: ${profile?.chronic_conditions || 'None documented'}\n- Surgeries: ${profile?.previous_surgeries || 'None documented'}\nProvide clear, compassionate, medically sound guidance. Include a standard emergency disclaimer when discussing acute symptoms. Do not use emojis.`;
+                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Provide clear, compassionate, medically sound guidance with emergency disclaimers when discussing acute symptoms. Do not use emojis.`;
 
                     const contents = [];
                     if (Array.isArray(messages)) {
@@ -970,7 +1008,7 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
         // Direct Google Gemini Fallback if Python microservice is offline
         if (!reply && process.env.GEMINI_API_KEY) {
             try {
-                const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nDocumented Health Profile:\n- Blood Group: ${profile?.blood_group || 'Not recorded'}\n- Allergies: ${profile?.allergies || 'None documented'}\n- Medications: ${profile?.current_medications || 'None recorded'}\n- Chronic Conditions: ${profile?.chronic_conditions || 'None documented'}\n- Surgeries: ${profile?.previous_surgeries || 'None documented'}\nProvide clear, compassionate, medically sound guidance. Include a standard emergency disclaimer when discussing acute symptoms. Do not use emojis.`;
+                const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Provide clear, compassionate, medically sound guidance with emergency disclaimers when discussing acute symptoms. Do not use emojis.`;
 
                 const contents = [];
                 if (Array.isArray(messages)) {

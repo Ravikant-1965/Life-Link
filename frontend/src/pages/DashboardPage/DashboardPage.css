@@ -939,6 +939,12 @@
   padding: 1px 8px;
 }
 
+.rag-grounded-pill.health-profile-pill {
+  color: #018ABE;
+  background-color: #e6f4f9;
+  border-color: #b3e0f2;
+}
+
 .message-text {
   padding: 14px 18px;
   border-radius: 18px;
