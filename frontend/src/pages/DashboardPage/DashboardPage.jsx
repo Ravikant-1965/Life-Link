@@ -13,22 +13,25 @@ import { HealthDataModal } from './HealthDataModal';
 import { SettingsModal } from './SettingsModal';
 import './DashboardPage.css';
 
-// Formats inline markdown tokens: **bold**, *italic*, `code`
+// Formats inline markdown tokens: **bold**, *italic*, `code`, ensuring no raw asterisks remain
 function formatInlineMarkdown(text) {
     if (!text || typeof text !== 'string') return text;
     const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g;
     const parts = text.split(regex);
     return parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
-            return <strong key={i} style={{ fontWeight: 700, color: '#0f172a' }}>{part.slice(2, -2)}</strong>;
+            const inner = part.slice(2, -2).replace(/\*\*/g, '');
+            return <strong key={i} style={{ fontWeight: 700, color: '#0f172a' }}>{inner}</strong>;
         }
         if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
-            return <em key={i} style={{ fontStyle: 'italic', color: '#475569' }}>{part.slice(1, -1)}</em>;
+            const inner = part.slice(1, -1).replace(/\*/g, '');
+            return <em key={i} style={{ fontStyle: 'italic', color: '#475569' }}>{inner}</em>;
         }
         if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
             return <code key={i} style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', fontSize: '0.88em' }}>{part.slice(1, -1)}</code>;
         }
-        return part;
+        // In plain text, strip any stray double asterisks so "**" is NEVER shown to user
+        return part.replace(/\*\*/g, '');
     });
 }
 
@@ -97,7 +100,7 @@ export function DashboardPage({ user, token, logout }) {
                 messages: [
                     {
                         role: 'assistant',
-                        content: `Hello **${user.name}**! I am your Life-Link Health Assistant.\n\nI am connected to your encrypted Health ID (**${user.healthId}**). I can answer questions about your recorded allergies, active medications, blood group, or explain newly uploaded reports and medical news. How can I assist you today?`,
+                        content: `Hello ${user.name}! I am your Life-Link Health Assistant.\n\nI am connected to your encrypted Health ID (${user.healthId}). I can answer questions about your recorded allergies, active medications, blood group, or explain newly uploaded reports and medical news. How can I assist you today?`,
                         referencedRecords: ['Connected to Health ID: ' + user.healthId],
                         timestamp: new Date().toISOString()
                     }
@@ -112,6 +115,16 @@ export function DashboardPage({ user, token, logout }) {
 
     const chatEndRef = useRef(null);
     const textareaRef = useRef(null);
+    const abortControllerRef = useRef(null);
+
+    // Stop active generation
+    const handleStopGeneration = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        setIsSending(false);
+    };
 
     // Toggle and save sidebar preference
     const toggleSidebar = () => {
@@ -300,6 +313,9 @@ export function DashboardPage({ user, token, logout }) {
 
         setIsSending(true);
 
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         const apiUrl = `${(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')}/api/chat`;
 
         try {
@@ -316,7 +332,8 @@ export function DashboardPage({ user, token, logout }) {
                         content: m.content
                     })),
                     stream: true
-                })
+                }),
+                signal: controller.signal
             });
 
             if (!response.ok) {
@@ -375,12 +392,34 @@ export function DashboardPage({ user, token, logout }) {
                 }
             }
         } catch (err) {
+            if (err.name === 'AbortError') {
+                // User aborted the response via "Stop generating"
+                setChats((prevChats) =>
+                    prevChats.map((c) =>
+                        c.id === currentChat.id
+                            ? {
+                                ...c,
+                                messages: c.messages.map((m) =>
+                                    m.id === botMessageId
+                                        ? {
+                                            ...botMessage,
+                                            content: botMessage.content || '*(Response stopped by user)*'
+                                        }
+                                        : m
+                                )
+                            }
+                            : c
+                    )
+                );
+                return;
+            }
+
             // Offline or fallback response
             let fallbackContent = `I have cross-referenced your offline health card:\n\n` +
-                `• **Blood Group**: ${profile?.blood_group || 'Not recorded'}\n` +
-                `• **Documented Allergies**: ${profile?.allergies || 'None documented'}\n` +
-                `• **Active Medications**: ${profile?.current_medications || 'None recorded'}\n\n` +
-                `Your encrypted Health ID is **${user?.healthId}**. For acute emergencies, call local emergency services immediately.`;
+                `• Blood Group: ${profile?.blood_group || 'Not recorded'}\n` +
+                `• Documented Allergies: ${profile?.allergies || 'None documented'}\n` +
+                `• Active Medications: ${profile?.current_medications || 'None recorded'}\n\n` +
+                `Your encrypted Health ID is ${user?.healthId}. For acute emergencies, call local emergency services immediately.`;
 
             botMessage.content = fallbackContent;
             botMessage.referencedRecords = ['Offline Cached Medical Profile'];
@@ -398,6 +437,7 @@ export function DashboardPage({ user, token, logout }) {
                 )
             );
         } finally {
+            abortControllerRef.current = null;
             setIsSending(false);
         }
     };
@@ -860,6 +900,21 @@ export function DashboardPage({ user, token, logout }) {
 
                         {/* GPT FLOATING CHAT INPUT CAPSULE */}
                         <div className="chat-input-bottom-container">
+                            {/* Stop generating floating button */}
+                            {isSending && (
+                                <div className="stop-generating-container">
+                                    <button
+                                        type="button"
+                                        className="stop-generating-btn"
+                                        onClick={handleStopGeneration}
+                                        title="Cancel and stop generating response"
+                                    >
+                                        <span className="stop-square-icon" />
+                                        <span>Stop generating</span>
+                                    </button>
+                                </div>
+                            )}
+
                             <div className="chat-input-capsule">
                                 <button
                                     className="capsule-attach-btn"
@@ -872,7 +927,7 @@ export function DashboardPage({ user, token, logout }) {
                                 <textarea
                                     ref={textareaRef}
                                     className="capsule-textarea"
-                                    placeholder="Ask Life-Link about your health, medications, allergies, or documents..."
+                                    placeholder={isSending ? "Life-Link is responding... (click Stop to cancel)" : "Ask Life-Link about your health, medications, allergies, or documents..."}
                                     value={inputText}
                                     onChange={handleTextareaChange}
                                     onKeyDown={handleKeyDown}
@@ -880,17 +935,32 @@ export function DashboardPage({ user, token, logout }) {
                                     disabled={isSending}
                                 />
 
-                                <button
-                                    className={`capsule-send-btn ${inputText.trim() ? 'active' : ''}`}
-                                    onClick={() => handleSendMessage()}
-                                    disabled={!inputText.trim() || isSending}
-                                    aria-label="Send prompt"
-                                >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="12" y1="19" x2="12" y2="5"></line>
-                                        <polyline points="5 12 12 5 19 12"></polyline>
-                                    </svg>
-                                </button>
+                                {isSending ? (
+                                    <button
+                                        type="button"
+                                        className="capsule-send-btn stop-active"
+                                        onClick={handleStopGeneration}
+                                        title="Stop generating"
+                                        aria-label="Stop generating"
+                                    >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                            <rect x="4" y="4" width="16" height="16" rx="2" />
+                                        </svg>
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className={`capsule-send-btn ${inputText.trim() ? 'active' : ''}`}
+                                        onClick={() => handleSendMessage()}
+                                        disabled={!inputText.trim()}
+                                        aria-label="Send prompt"
+                                    >
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="12" y1="19" x2="12" y2="5"></line>
+                                            <polyline points="5 12 12 5 19 12"></polyline>
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
 
                             <div className="chat-disclaimer-text">

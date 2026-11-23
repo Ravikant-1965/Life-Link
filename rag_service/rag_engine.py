@@ -78,7 +78,8 @@ def _build_gemini_payload(
         "3. If retrieved medical reports or lab results are available and directly relevant to the query, cite the source file name and page number.\n"
         "4. If something is unknown or not documented in their records, clearly state so without fabricating facts.\n"
         "5. Maintain an objective, professional, and compassionate medical tone. Do not use emojis.\n"
-        "6. Always include a brief disclaimer for acute medical emergencies.\n\n"
+        "6. Always include a brief disclaimer for acute medical emergencies.\n"
+        "7. STRICT FORMATTING: NEVER enclose words, headings, or titles in double asterisks (**) or single asterisks (*). Do not use markdown bold or italic syntax. Write all section titles, numbers, and disclaimers in clean plain text (e.g. '1. Review Your Clinical Profile:' NEVER '1. **Review Your Clinical Profile:**', and 'Disclaimer: ...' NEVER '*Disclaimer:...*').\n\n"
         f"{context}"
     )
 
@@ -147,28 +148,25 @@ async def generate_rag_answer(
                             cand_content = candidates[0]["content"]
                             parts = cand_content.get("parts", [])
 
-                            # Check if model invoked a registered function
-                            function_call = None
-                            for p in parts:
-                                if "functionCall" in p:
-                                    function_call = p["functionCall"]
-                                    break
+                            # Check if model invoked registered function(s)
+                            function_call_parts = [p for p in parts if "functionCall" in p]
 
-                            if function_call:
-                                func_name = function_call.get("name", "tool")
-                                tool_result = execute_tool_call(function_call)
+                            if function_call_parts:
+                                response_parts = []
+                                for p in function_call_parts:
+                                    fc = p["functionCall"]
+                                    func_name = fc.get("name", "tool")
+                                    tool_result = execute_tool_call(fc)
+                                    resp_obj = {"name": func_name, "response": {"result": str(tool_result)}}
+                                    if "id" in fc:
+                                        resp_obj["id"] = fc["id"]
+                                    response_parts.append({"functionResponse": resp_obj})
 
-                                # Follow-up turn passing model turn and function response
                                 followup_contents = list(payload.get("contents", []))
-                                followup_contents.append(cand_content)
+                                followup_contents.append({"role": "model", "parts": function_call_parts})
                                 followup_contents.append({
                                     "role": "user",
-                                    "parts": [{
-                                        "functionResponse": {
-                                            "name": func_name,
-                                            "response": {"result": str(tool_result)}
-                                        }
-                                    }]
+                                    "parts": response_parts
                                 })
                                 followup_payload = dict(payload)
                                 followup_payload["contents"] = followup_contents
@@ -184,7 +182,7 @@ async def generate_rag_answer(
                                                 "answer": parts2[0]["text"].strip(),
                                                 "sources": sources,
                                                 "grounded": True,
-                                                "engine": f"google-{model}-tool-{func_name}"
+                                                "engine": f"google-{model}-tools"
                                             }
 
                             elif parts and "text" in parts[0]:
@@ -246,8 +244,7 @@ async def stream_rag_answer(
                             }
                             yield f"data: {json.dumps(metadata)}\n\n"
 
-                            cand_content = None
-                            function_call = None
+                            function_call_parts = []
                             streamed_text = False
 
                             async for line in response.aiter_lines():
@@ -263,8 +260,7 @@ async def stream_rag_answer(
                                             parts = content.get("parts", [])
                                             for part in parts:
                                                 if "functionCall" in part:
-                                                    function_call = part["functionCall"]
-                                                    cand_content = content
+                                                    function_call_parts.append(part)
                                                 elif "text" in part:
                                                     txt = part.get("text", "")
                                                     if txt:
@@ -276,24 +272,27 @@ async def stream_rag_answer(
                                     except Exception:
                                         continue
 
-                            # If model called a tool, execute it and stream the follow-up answer
-                            if function_call and cand_content:
-                                func_name = function_call.get("name", "tool")
-                                yield f"data: {json.dumps({'type': 'tool_call', 'tool': func_name, 'args': function_call.get('args', {})})}\n\n"
+                            # If model called tool(s), execute all of them and stream the follow-up answer
+                            if function_call_parts:
+                                response_parts = []
+                                for p in function_call_parts:
+                                    fc = p["functionCall"]
+                                    func_name = fc.get("name", "tool")
+                                    yield f"data: {json.dumps({'type': 'tool_call', 'tool': func_name, 'args': fc.get('args', {})})}\n\n"
 
-                                tool_result = execute_tool_call(function_call)
-                                yield f"data: {json.dumps({'type': 'tool_result', 'tool': func_name, 'result': str(tool_result)})}\n\n"
+                                    tool_result = execute_tool_call(fc)
+                                    yield f"data: {json.dumps({'type': 'tool_result', 'tool': func_name, 'result': str(tool_result)})}\n\n"
+
+                                    resp_obj = {"name": func_name, "response": {"result": str(tool_result)}}
+                                    if "id" in fc:
+                                        resp_obj["id"] = fc["id"]
+                                    response_parts.append({"functionResponse": resp_obj})
 
                                 followup_contents = list(payload.get("contents", []))
-                                followup_contents.append(cand_content)
+                                followup_contents.append({"role": "model", "parts": function_call_parts})
                                 followup_contents.append({
                                     "role": "user",
-                                    "parts": [{
-                                        "functionResponse": {
-                                            "name": func_name,
-                                            "response": {"result": str(tool_result)}
-                                        }
-                                    }]
+                                    "parts": response_parts
                                 })
                                 followup_payload = dict(payload)
                                 followup_payload["contents"] = followup_contents
@@ -320,8 +319,11 @@ async def stream_rag_answer(
                                                                 yield f"data: {json.dumps({'type': 'token', 'text': f_txt})}\n\n"
                                                 except Exception:
                                                     continue
+                                    else:
+                                        err_body = await follow_res.aread()
+                                        print(f"[RAG Stream Followup Error {follow_res.status_code}]: {err_body.decode('utf-8', errors='ignore')}", flush=True)
 
-                            if streamed_text or function_call:
+                            if streamed_text or function_call_parts:
                                 print("\n", flush=True)
                                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
                                 return
@@ -371,22 +373,22 @@ def synthesize_local_clinical_response(
             chunk_text = c.get("text", "").lower()
             for ak in allergy_keywords:
                 if len(ak) > 3 and ak in chunk_text:
-                    lines.append(f"**CLINICAL CAUTION**: Documented allergy to *'{ak.title()}'* was detected in reference to records.")
+                    lines.append(f"CLINICAL CAUTION: Documented allergy to '{ak.title()}' was detected in reference to records.")
                     break
 
     # Highlight retrieved document findings if found
     if chunks:
-        lines.append(f"Hello **{name}**, based on your encrypted medical records, here are the findings relevant to *\"{query}\"*:")
+        lines.append(f"Hello {name}, based on your encrypted medical records, here are the findings relevant to \"{query}\":")
         for idx, chunk in enumerate(chunks[:3], 1):
             src = chunk.get("file_name", "Medical Document")
             pg = chunk.get("page_number", 1)
             cat = chunk.get("category", "General")
             txt = chunk.get("text", "").strip()
             sim = int(chunk.get("similarity", 0.0) * 100)
-            lines.append(f"\n• **Source {idx}: `{src}` (Page {pg}, Category: {cat}, Relevance: {sim}%)**:\n  {txt}")
+            lines.append(f"\n• Source {idx}: {src} (Page {pg}, Category: {cat}, Relevance: {sim}%):\n  {txt}")
 
         lines.append(
-            "\n**Clinical Guidance**: Please verify any new symptoms or abnormal lab markers with your attending physician. "
+            "\nClinical Guidance: Please verify any new symptoms or abnormal lab markers with your attending physician. "
             "Verified emergency teams can access these source documents directly during clinical care."
         )
     else:
@@ -396,13 +398,13 @@ def synthesize_local_clinical_response(
         meds = (profile or {}).get("current_medications", "None recorded")
         conditions = (profile or {}).get("chronic_conditions", "None documented")
 
-        lines.append(f"Hello **{name}**, I reviewed your encrypted medical profile for: *\"{query}\"*.")
-        lines.append(f"\n• **Recorded Blood Group**: {blood}")
-        lines.append(f"• **Critical Allergies**: {allergies}")
-        lines.append(f"• **Active Medications**: {meds}")
-        lines.append(f"• **Chronic Conditions**: {conditions}")
+        lines.append(f"Hello {name}, I reviewed your encrypted medical profile for: \"{query}\".")
+        lines.append(f"\n• Recorded Blood Group: {blood}")
+        lines.append(f"• Critical Allergies: {allergies}")
+        lines.append(f"• Active Medications: {meds}")
+        lines.append(f"• Chronic Conditions: {conditions}")
         lines.append(
-            "\n*Note*: No specific lab document chunks matched this query in your document store. "
+            "\nNote: No specific lab document chunks matched this query in your document store. "
             "You can upload your official PDF lab reports or discharge summaries in the Documents tab for deep AI search."
         )
 

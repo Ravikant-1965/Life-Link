@@ -7,7 +7,7 @@ _dir = str(Path(__file__).resolve().parent)
 if _dir not in sys.path:
     sys.path.insert(0, _dir)
 
-from datetime import datetime
+from datetime import datetime, timezone
 import requests
 import json
 
@@ -26,11 +26,15 @@ except ImportError:
 # (Runs locally on our machine when called by the LLM)
 # ==============================================================================
 
-def get_current_time():
-    """Returns the current formatted date and time."""
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log(f"⏰ get_current_time called -> {now_str}")
-    return now_str
+def get_current_time(location: str = ""):
+    """Returns the current formatted date and time with UTC reference."""
+    now_local = datetime.now()
+    now_utc = datetime.now(timezone.utc)
+    res = f"{now_local.strftime('%Y-%m-%d %H:%M:%S')} (Local Time) | UTC: {now_utc.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+    if location:
+        res += f" (Requested location: {location})"
+    log(f"⏰ get_current_time({location}) -> {res}")
+    return res
 
 def get_city_weather(city: str):
     """Fetches real-time weather for any city via wttr.in."""
@@ -122,10 +126,15 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "get_current_time",
-            "description": "Get the current real-world date and time.",
+            "description": "Get current real-world date and time, optionally for a specific city, country, or timezone.",
             "parameters": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "Optional city, timezone, or region (e.g. 'New York', 'London', 'IST')"
+                    }
+                },
             },
         }
     },

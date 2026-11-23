@@ -668,51 +668,51 @@ function generateMedicalRagResponse(query, user, profile, referenced) {
     const docCount = (profile?.document_images?.length || 0) + (profile?.medical_file_links?.length || 0);
 
     if (q.includes('allergy') || q.includes('allergies') || q.includes('allergic')) {
-        return `Based on your encrypted health records, your documented allergies are: **${allergies}**.\n\n` +
-            `• **Clinical Notice**: If you are being prescribed new antibiotics, analgesics, or undergoing an emergency procedure, inform the attending team immediately.\n` +
-            `• **Emergency Readiness**: Your verified Health ID (**${user?.health_id}**) provides approved doctors with instant access to these allergy alerts even if you are unconscious.`;
+        return `Based on your encrypted health records, your documented allergies are: ${allergies}.\n\n` +
+            `• Clinical Notice: If you are being prescribed new antibiotics, analgesics, or undergoing an emergency procedure, inform the attending team immediately.\n` +
+            `• Emergency Readiness: Your verified Health ID (${user?.health_id}) provides approved doctors with instant access to these allergy alerts even if you are unconscious.`;
     }
 
     if (q.includes('medication') || q.includes('medicine') || q.includes('drug') || q.includes('prescription') || q.includes('pill')) {
         return `Cross-referencing your medical vector profile:\n\n` +
-            `• **Current Medications on File**: ${meds}\n` +
-            `• **Documented Prescriptions/Photos**: ${profile?.medication_images?.length || 0} medication photo(s) attached.\n\n` +
-            `**Clinical Guidance**: Always adhere strictly to prescribed dosages. Never stop or combine medications without consulting your primary doctor. In an emergency, first responders can view your uploaded medication packaging to verify active dosages.`;
+            `• Current Medications on File: ${meds}\n` +
+            `• Documented Prescriptions/Photos: ${profile?.medication_images?.length || 0} medication photo(s) attached.\n\n` +
+            `Clinical Guidance: Always adhere strictly to prescribed dosages. Never stop or combine medications without consulting your primary doctor. In an emergency, first responders can view your uploaded medication packaging to verify active dosages.`;
     }
 
     if (q.includes('blood') || q.includes('transfusion') || q.includes('type') || q.includes('group')) {
         return `According to your LifeLink emergency profile:\n\n` +
-            `• **Recorded Blood Group**: **${blood}**\n` +
-            `• **Organ Donor Status**: ${profile?.organ_donor_status || 'Not specified'}\n\n` +
-            `In critical trauma situations, verified emergency doctors crossmatch your **${blood}** blood type against hospital blood bank inventory to initiate rapid transfusion protocols.`;
+            `• Recorded Blood Group: ${blood}\n` +
+            `• Organ Donor Status: ${profile?.organ_donor_status || 'Not specified'}\n\n` +
+            `In critical trauma situations, verified emergency doctors crossmatch your ${blood} blood type against hospital blood bank inventory to initiate rapid transfusion protocols.`;
     }
 
     if (q.includes('summar') || q.includes('overview') || q.includes('record') || q.includes('report') || q.includes('history')) {
-        return `Here is your personal emergency medical vector summary for **${name}** (**${user?.health_id}**):\n\n` +
-            `1. **Blood Group**: ${blood}\n` +
-            `2. **Critical Allergies**: ${allergies}\n` +
-            `3. **Active Medications**: ${meds}\n` +
-            `4. **Chronic Conditions**: ${conditions}\n` +
-            `5. **Previous Surgeries**: ${surgeries}\n` +
-            `6. **Stored Medical Files/Scans**: ${docCount} document(s) & photos securely stored.\n` +
-            `7. **Emergency Contact**: ${profile?.emergency_contact_name ? `${profile.emergency_contact_name} (${profile.emergency_contact_phone || 'No phone'})` : 'Not configured'}\n\n` +
+        return `Here is your personal emergency medical vector summary for ${name} (${user?.health_id}):\n\n` +
+            `1. Blood Group: ${blood}\n` +
+            `2. Critical Allergies: ${allergies}\n` +
+            `3. Active Medications: ${meds}\n` +
+            `4. Chronic Conditions: ${conditions}\n` +
+            `5. Previous Surgeries: ${surgeries}\n` +
+            `6. Stored Medical Files/Scans: ${docCount} document(s) & photos securely stored.\n` +
+            `7. Emergency Contact: ${profile?.emergency_contact_name ? `${profile.emergency_contact_name} (${profile.emergency_contact_phone || 'No phone'})` : 'Not configured'}\n\n` +
             `Verified emergency doctors can access this exact profile via your emergency QR code or Health ID.`;
     }
 
     if (q.includes('emergency') || q.includes('first responder') || q.includes('accident') || q.includes('qr')) {
         return `In an emergency event:\n\n` +
-            `1. First responders or hospital triage scan your **LifeLink QR Code** or enter Health ID **${user?.health_id}**.\n` +
-            `2. Only **credential-verified doctors** can unlock your sensitive records.\n` +
-            `3. They immediately see your **Blood Group (${blood})**, **Allergies (${allergies})**, and emergency contacts.\n` +
+            `1. First responders or hospital triage scan your LifeLink QR Code or enter Health ID ${user?.health_id}.\n` +
+            `2. Only credential-verified doctors can unlock your sensitive records.\n` +
+            `3. They immediately see your Blood Group (${blood}), Allergies (${allergies}), and emergency contacts.\n` +
             `4. Every access is timestamped and logged directly in your Access Log for complete auditability.`;
     }
 
     // Default intelligent clinical assistant response
-    return `Hello **${name}**, I have retrieved your medical context from your encrypted Health ID (**${user?.health_id}**).\n\n` +
-        `Regarding your question: *"${query}"*\n\n` +
-        `• **Patient Record Status**: Your profile has recorded Blood Group (**${blood}**), documented Allergies (**${allergies}**), and active Medications (**${meds}**).\n` +
-        `• **Personalized Medical Advice**: Please ensure that any symptoms or medication changes are evaluated by a licensed medical provider. I can help analyze your stored medical PDFs, medication images, or explain health news articles.\n\n` +
-        `*Disclaimer: Life-Link is an intelligent medical record assistant and not a replacement for emergency diagnostic evaluation.*`;
+    return `Hello ${name}, I have retrieved your medical context from your encrypted Health ID (${user?.health_id}).\n\n` +
+        `Regarding your question: "${query}"\n\n` +
+        `• Patient Record Status: Your profile has recorded Blood Group (${blood}), documented Allergies (${allergies}), and active Medications (${meds}).\n` +
+        `• Personalized Medical Advice: Please ensure that any symptoms or medication changes are evaluated by a licensed medical provider. I can help analyze your stored medical PDFs, medication images, or explain health news articles.\n\n` +
+        `Disclaimer: Life-Link is an intelligent medical record assistant and not a replacement for emergency diagnostic evaluation.`;
 }
 
 app.get('/api/news', (_req, res) => {
@@ -888,7 +888,7 @@ app.post('/api/chat', checkPatientAuth, async (req, res) => {
             // 1.B Direct Gemini Flash Lite Streaming Fallback
             if (process.env.GEMINI_API_KEY) {
                 try {
-                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Provide clear, compassionate, medically sound guidance with emergency disclaimers when discussing acute symptoms. Do not use emojis.`;
+                    const systemPrompt = `You are Life Link AI, an empathetic, intelligent clinical records assistant.\nSpeaking with ${user?.name || 'Patient'}.\nGuidelines:\n1. Answer the user's question directly and helpfully.\n2. DO NOT recite or list the patient's personal records (Blood Group: ${profile?.blood_group || 'Not recorded'}, Allergies: ${profile?.allergies || 'None documented'}, Medications: ${profile?.current_medications || 'None recorded'}) unless the user specifically asks about their personal health data or when evaluating medication/allergy safety.\n3. Provide clear, compassionate, medically sound guidance with emergency disclaimers when discussing acute symptoms. Do not use emojis.\n4. STRICT FORMATTING: NEVER use double asterisks (**) or single asterisks (*) anywhere. Do not enclose words or headings in asterisks. Write all text, headings, and disclaimers in clean plain text only.`;
 
                     const contents = [];
                     if (Array.isArray(messages)) {

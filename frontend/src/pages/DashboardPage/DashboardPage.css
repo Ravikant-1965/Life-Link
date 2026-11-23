@@ -1155,6 +1155,77 @@
   transform: translateY(-1px);
 }
 
+.capsule-send-btn.stop-active {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  opacity: 1 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+}
+
+.capsule-send-btn.stop-active:hover {
+  background-color: #ef4444 !important;
+  transform: scale(1.06);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+/* Stop Generating Floating Action Pill */
+.stop-generating-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  animation: stopPillFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes stopPillFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stop-generating-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.stop-generating-btn:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.stop-generating-btn:active {
+  transform: translateY(0);
+}
+
+.stop-square-icon {
+  width: 9px;
+  height: 9px;
+  background-color: #ef4444;
+  border-radius: 2px;
+  display: inline-block;
+}
+
 .chat-disclaimer-text {
   font-size: 0.74rem;
   color: #94a3b8;
