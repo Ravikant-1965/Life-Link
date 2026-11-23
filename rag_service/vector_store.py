@@ -5,6 +5,10 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from config import CHROMA_PERSIST_DIR, COLLECTION_NAME, EMBEDDING_MODEL_NAME
 
+# Prefer cached local embeddings without blocking on network checks
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 class VectorStore:
     def __init__(self):
         os.makedirs(CHROMA_PERSIST_DIR, exist_ok=True)
@@ -12,7 +16,10 @@ class VectorStore:
         
         # Initialize SentenceTransformer embedding model (runs 100% locally on CPU / Metal)
         print(f"[VectorStore] Loading embedding model: {EMBEDDING_MODEL_NAME}...")
-        self.model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+        try:
+            self.model = SentenceTransformer(EMBEDDING_MODEL_NAME, local_files_only=True)
+        except Exception:
+            self.model = SentenceTransformer(EMBEDDING_MODEL_NAME)
         print("[VectorStore] Embedding model loaded successfully.")
         
         # Get or create collection configured with cosine distance

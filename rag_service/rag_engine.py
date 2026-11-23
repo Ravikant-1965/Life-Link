@@ -1,9 +1,22 @@
 # rag_service/rag_engine.py - Stage 5: Grounded Clinical Generation & Citations (Python)
+import sys
+from pathlib import Path
+
+# Ensure rag_service is in sys.path
+_dir = str(Path(__file__).resolve().parent)
+if _dir not in sys.path:
+    sys.path.insert(0, _dir)
+
 import httpx
 import json
 import asyncio
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from config import GEMINI_API_KEY
+
+try:
+    from tool import get_gemini_tools, execute_tool_call
+except ImportError:
+    from rag_service.tool import get_gemini_tools, execute_tool_call
 
 CANDIDATE_MODELS = [
     "gemini-flash-lite-latest",
@@ -89,6 +102,7 @@ def _build_gemini_payload(
     return {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": contents,
+        "tools": get_gemini_tools(),
         "generationConfig": {
             "temperature": 0.3,
             "maxOutputTokens": 800
@@ -104,6 +118,7 @@ async def generate_rag_answer(
 ) -> Dict[str, Any]:
     """
     Synthesizes retrieved chunks, clinical profile, and multi-turn dialog into an LLM response with citations.
+    Supports native tool execution if Gemini invokes a registered function.
     """
     context = build_clinical_context(query, retrieved_chunks, patient_profile)
     sources = [
@@ -122,15 +137,57 @@ async def generate_rag_answer(
         payload = _build_gemini_payload(query, context, patient_name, history)
         for model in CANDIDATE_MODELS:
             try:
-                async with httpx.AsyncClient(timeout=16.0) as client:
+                async with httpx.AsyncClient(timeout=25.0) as client:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
                     res = await client.post(url, json=payload)
                     if res.status_code == 200:
                         data = res.json()
                         candidates = data.get("candidates", [])
                         if candidates and "content" in candidates[0]:
-                            parts = candidates[0]["content"].get("parts", [])
-                            if parts and "text" in parts[0]:
+                            cand_content = candidates[0]["content"]
+                            parts = cand_content.get("parts", [])
+
+                            # Check if model invoked a registered function
+                            function_call = None
+                            for p in parts:
+                                if "functionCall" in p:
+                                    function_call = p["functionCall"]
+                                    break
+
+                            if function_call:
+                                func_name = function_call.get("name", "tool")
+                                tool_result = execute_tool_call(function_call)
+
+                                # Follow-up turn passing model turn and function response
+                                followup_contents = list(payload.get("contents", []))
+                                followup_contents.append(cand_content)
+                                followup_contents.append({
+                                    "role": "user",
+                                    "parts": [{
+                                        "functionResponse": {
+                                            "name": func_name,
+                                            "response": {"result": str(tool_result)}
+                                        }
+                                    }]
+                                })
+                                followup_payload = dict(payload)
+                                followup_payload["contents"] = followup_contents
+
+                                res2 = await client.post(url, json=followup_payload)
+                                if res2.status_code == 200:
+                                    data2 = res2.json()
+                                    candidates2 = data2.get("candidates", [])
+                                    if candidates2 and "content" in candidates2[0]:
+                                        parts2 = candidates2[0]["content"].get("parts", [])
+                                        if parts2 and "text" in parts2[0]:
+                                            return {
+                                                "answer": parts2[0]["text"].strip(),
+                                                "sources": sources,
+                                                "grounded": True,
+                                                "engine": f"google-{model}-tool-{func_name}"
+                                            }
+
+                            elif parts and "text" in parts[0]:
                                 answer = parts[0]["text"].strip()
                                 return {
                                     "answer": answer,
@@ -155,7 +212,8 @@ async def stream_rag_answer(
 ) -> AsyncGenerator[str, None]:
     """
     Streams RAG response chunk by chunk as Server-Sent Events (SSE).
-    Also prints tokens to console in real time with flush=True.
+    Supports real-time function execution and follow-up streaming.
+    Prints tokens to console in real time with flush=True.
     """
     context = build_clinical_context(query, retrieved_chunks, patient_profile)
     sources = [
@@ -176,7 +234,7 @@ async def stream_rag_answer(
         for model in CANDIDATE_MODELS:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={GEMINI_API_KEY}"
-                async with httpx.AsyncClient(timeout=30.0) as client:
+                async with httpx.AsyncClient(timeout=35.0) as client:
                     async with client.stream("POST", url, json=payload) as response:
                         if response.status_code == 200:
                             # Send metadata event first
@@ -188,7 +246,9 @@ async def stream_rag_answer(
                             }
                             yield f"data: {json.dumps(metadata)}\n\n"
 
-                            print(f"\n[Life Link AI Stream ({model})]: ", end="", flush=True)
+                            cand_content = None
+                            function_call = None
+                            streamed_text = False
 
                             async for line in response.aiter_lines():
                                 if line.startswith("data: "):
@@ -199,18 +259,72 @@ async def stream_rag_answer(
                                         d = json.loads(raw)
                                         candidates = d.get("candidates", [])
                                         if candidates:
-                                            parts = candidates[0].get("content", {}).get("parts", [])
+                                            content = candidates[0].get("content", {})
+                                            parts = content.get("parts", [])
                                             for part in parts:
-                                                txt = part.get("text", "")
-                                                if txt:
-                                                    print(txt, end="", flush=True)
-                                                    yield f"data: {json.dumps({'type': 'token', 'text': txt})}\n\n"
+                                                if "functionCall" in part:
+                                                    function_call = part["functionCall"]
+                                                    cand_content = content
+                                                elif "text" in part:
+                                                    txt = part.get("text", "")
+                                                    if txt:
+                                                        if not streamed_text:
+                                                            print(f"\n[Life Link AI Stream ({model})]: ", end="", flush=True)
+                                                            streamed_text = True
+                                                        print(txt, end="", flush=True)
+                                                        yield f"data: {json.dumps({'type': 'token', 'text': txt})}\n\n"
                                     except Exception:
                                         continue
 
-                            print("\n", flush=True)
-                            yield f"data: {json.dumps({'type': 'done'})}\n\n"
-                            return
+                            # If model called a tool, execute it and stream the follow-up answer
+                            if function_call and cand_content:
+                                func_name = function_call.get("name", "tool")
+                                yield f"data: {json.dumps({'type': 'tool_call', 'tool': func_name, 'args': function_call.get('args', {})})}\n\n"
+
+                                tool_result = execute_tool_call(function_call)
+                                yield f"data: {json.dumps({'type': 'tool_result', 'tool': func_name, 'result': str(tool_result)})}\n\n"
+
+                                followup_contents = list(payload.get("contents", []))
+                                followup_contents.append(cand_content)
+                                followup_contents.append({
+                                    "role": "user",
+                                    "parts": [{
+                                        "functionResponse": {
+                                            "name": func_name,
+                                            "response": {"result": str(tool_result)}
+                                        }
+                                    }]
+                                })
+                                followup_payload = dict(payload)
+                                followup_payload["contents"] = followup_contents
+
+                                async with client.stream("POST", url, json=followup_payload) as follow_res:
+                                    if follow_res.status_code == 200:
+                                        print(f"\n[Life Link AI Tool Followup Stream ({model})]: ", end="", flush=True)
+                                        async for f_line in follow_res.aiter_lines():
+                                            if f_line.startswith("data: "):
+                                                f_raw = f_line[6:].strip()
+                                                if not f_raw:
+                                                    continue
+                                                try:
+                                                    f_d = json.loads(f_raw)
+                                                    f_cands = f_d.get("candidates", [])
+                                                    if f_cands:
+                                                        f_parts = f_cands[0].get("content", {}).get("parts", [])
+                                                        for f_part in f_parts:
+                                                            f_txt = f_part.get("text", "")
+                                                            if f_txt:
+                                                                if not streamed_text:
+                                                                    streamed_text = True
+                                                                print(f_txt, end="", flush=True)
+                                                                yield f"data: {json.dumps({'type': 'token', 'text': f_txt})}\n\n"
+                                                except Exception:
+                                                    continue
+
+                            if streamed_text or function_call:
+                                print("\n", flush=True)
+                                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                                return
                         else:
                             print(f"[RAG Stream] Model {model} status {response.status_code}", flush=True)
             except Exception as stream_err:

@@ -55,7 +55,7 @@ class QueryRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str
-    health_id: str
+    health_id: Optional[str] = "LL-PATIENT"
     patient_name: str = "Patient"
     patient_profile: Optional[Dict[str, Any]] = None
     top_k: int = 4

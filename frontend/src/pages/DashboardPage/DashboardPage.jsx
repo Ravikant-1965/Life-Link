@@ -32,6 +32,23 @@ function formatInlineMarkdown(text) {
     });
 }
 
+function formatLineWithMarkdown(line, lIdx, isLast) {
+    let cleanLine = line;
+    let isBullet = false;
+    if (/^[\*\-\•]\s+/.test(cleanLine)) {
+        cleanLine = cleanLine.replace(/^[\*\-\•]\s+/, '');
+        isBullet = true;
+    }
+
+    return (
+        <span key={lIdx} style={isBullet ? { display: 'flex', alignItems: 'flex-start', gap: '8px', margin: '3px 0' } : {}}>
+            {isBullet && <span style={{ color: '#018ABE', fontWeight: 'bold', userSelect: 'none' }}>•</span>}
+            <span style={{ flex: 1 }}>{formatInlineMarkdown(cleanLine)}</span>
+            {!isBullet && !isLast && <br />}
+        </span>
+    );
+}
+
 export function DashboardPage({ user, token, logout }) {
     // Navigation / auth check
     const navigate = useNavigate();
@@ -333,6 +350,11 @@ export function DashboardPage({ user, token, logout }) {
                                     if (event.engine) botMessage.engine = event.engine;
                                 } else if (event.type === 'referencedRecords' && event.referencedRecords) {
                                     botMessage.referencedRecords = event.referencedRecords;
+                                } else if (event.type === 'tool_call') {
+                                    botMessage.activeTool = event.tool;
+                                } else if (event.type === 'tool_result') {
+                                    botMessage.activeTool = null;
+                                    botMessage.toolResult = event.result;
                                 }
 
                                 // Update current bot message in chat state in real-time
@@ -782,17 +804,16 @@ export function DashboardPage({ user, token, logout }) {
                                                         <span className="dot" />
                                                         <span className="dot" />
                                                         <span className="dot" />
-                                                        <span className="typing-text">Connecting to medical profile vectors...</span>
+                                                        <span className="typing-text">
+                                                            {msg.activeTool ? `Executing tool: ${msg.activeTool}...` : 'Consulting clinical AI...'}
+                                                        </span>
                                                     </div>
                                                 ) : (
                                                     <div className="message-text">
                                                         {msg.content.split('\n\n').map((para, pIdx) => (
                                                             <p key={pIdx}>
-                                                                {para.split('\n').map((line, lIdx) => (
-                                                                    <span key={lIdx}>
-                                                                        {formatInlineMarkdown(line)}
-                                                                        {lIdx < para.split('\n').length - 1 && <br />}
-                                                                    </span>
+                                                                {para.split('\n').map((line, lIdx, arr) => (
+                                                                    formatLineWithMarkdown(line, lIdx, lIdx === arr.length - 1)
                                                                 ))}
                                                             </p>
                                                         ))}
